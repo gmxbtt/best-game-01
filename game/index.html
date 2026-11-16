@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMBERFALL — Neon Arena Survival</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="./css/style.css">
+</head>
+<body>
+<div id="stage">
+  <canvas id="game-canvas" width="1280" height="720"></canvas>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="hud-left">
+      <div id="hearts"></div>
+      <div id="hp-bar"><div id="hp-fill"></div></div>
+      <div id="hp-text"></div>
+    </div>
+    <div id="hud-center">
+      <div id="score">0</div>
+      <div id="wave">WAVE 1 / 10</div>
+      <div id="combo"></div>
+    </div>
+    <div id="hud-right">
+      <div id="embers">⬢ 0</div>
+      <button id="btn-mute" type="button">🔊 Mute (M)</button>
+    </div>
+    <div id="boss-bar" class="hidden">
+      <div id="boss-name">☠ EMBER TYRANT</div>
+      <div id="boss-track"><div id="boss-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- Title screen -->
+  <div id="title-screen" class="overlay">
+    <h1 class="game-title">EMBER<span>FALL</span></h1>
+    <p class="tagline">Hold the arena. Ten waves. One ember ship. No mercy.</p>
+    <div class="howto">
+      <p><b>WASD / Arrows</b> — fly &nbsp;·&nbsp; <b>Mouse</b> — aim &nbsp;·&nbsp; <b>Hold Click / Space</b> — fire</p>
+      <p><b>Shift</b> — dash (brief invulnerability) &nbsp;·&nbsp; <b>P / Esc</b> — pause &nbsp;·&nbsp; <b>M</b> — mute</p>
+      <p>Slay enemies to build your combo, grab their embers, and pick an upgrade after every wave.</p>
+      <p>Survive all 10 waves — the Ember Tyrant waits at waves 5 and 10.</p>
+    </div>
+    <button id="btn-start" class="big-btn" type="button">▶ &nbsp;START — click or press Enter</button>
+    <p id="best-score" class="best"></p>
+  </div>
+
+  <!-- Upgrade choice -->
+  <div id="upgrade-screen" class="overlay hidden">
+    <h2 class="screen-title">WAVE CLEARED — CHOOSE AN UPGRADE</h2>
+    <p class="screen-sub">Pick one. Press 1, 2 or 3, or click a card.</p>
+    <div id="upgrade-cards"></div>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause-screen" class="overlay hidden">
+    <h2 class="screen-title">PAUSED</h2>
+    <p class="screen-sub">Take a breath. The embers wait.</p>
+    <button id="btn-resume" class="big-btn" type="button">▶ &nbsp;RESUME (P)</button>
+    <button id="btn-restart-pause" class="ghost-btn" type="button">↻ &nbsp;Restart run</button>
+  </div>
+
+  <!-- Game over -->
+  <div id="gameover-screen" class="overlay hidden">
+    <h2 class="screen-title danger">EMBER DOWN</h2>
+    <p class="screen-sub">The arena keeps your score.</p>
+    <div class="stats">
+      <div><span>SCORE</span><b id="final-score">0</b></div>
+      <div><span>WAVE REACHED</span><b id="final-wave">1</b></div>
+      <div><span>ENEMIES SLAIN</span><b id="final-kills">0</b></div>
+    </div>
+    <button id="btn-restart-over" class="big-btn" type="button">↻ &nbsp;PLAY AGAIN (Enter)</button>
+    <button id="btn-title-over" class="ghost-btn" type="button">Title screen</button>
+  </div>
+
+  <!-- Victory -->
+  <div id="victory-screen" class="overlay hidden">
+    <h2 class="screen-title gold">ARENA CONQUERED</h2>
+    <p class="screen-sub">Ten waves. The Tyrant is ash. You are the last ember burning.</p>
+    <div class="stats">
+      <div><span>FINAL SCORE</span><b id="victory-score">0</b></div>
+    </div>
+    <button id="btn-restart-victory" class="big-btn" type="button">↻ &nbsp;PLAY AGAIN (Enter)</button>
+    <button id="btn-title-victory" class="ghost-btn" type="button">Title screen</button>
+  </div>
+
+  <div id="toast"></div>
+</div>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
