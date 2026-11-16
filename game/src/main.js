@@ -25,6 +25,14 @@ import { defaultMods, rollUpgrades } from './upgrades.js';
 import { drawGame } from './render.js';
 import { createUI } from './ui.js';
 import { applyShot } from './shots.js';
+import {
+  createHeart,
+  updateHeart,
+  damageHeart,
+  hurtHeart,
+  heartLightRadius,
+  mendHeartBetweenNights,
+} from './heart.js';
 
 const BEST_KEY = 'emberfall-best';
 const MUTE_KEY = 'emberfall-muted';
@@ -60,6 +68,8 @@ function createGame(canvas, ctx) {
     frozen: false, // screenshot states freeze after setup
     time: 0,
     wave: 0,
+    nightName: '',
+    nightDark: false,
     score: 0,
     combo: 0,
     comboTimer: 0,
@@ -67,6 +77,7 @@ function createGame(canvas, ctx) {
     kills: 0,
     best: readBest(),
     player: null,
+    heart: createHeart(), // the Ember Heart burns from the first frame
     enemies: [],
     bullets: [],
     enemyBullets: [],
@@ -113,6 +124,10 @@ function addScore(game, base, x, y) {
 function startRun(game) {
   game.rng = new RNG(game.seed ?? 1);
   game.player = createPlayer(defaultMods());
+  game.heart = createHeart();
+  game.ui.hideToast();
+  game.nightName = '';
+  game.nightDark = false;
   game.enemies = [];
   game.bullets = [];
   game.enemyBullets = [];
@@ -134,7 +149,7 @@ function startRun(game) {
   startWave(game, 1);
 }
 
-function endRun(game, victory) {
+function endRun(game, victory, reason = 'ship') {
   game.state = victory ? 'victory' : 'gameover';
   game.audio.stopMusic();
   if (victory) {
@@ -144,7 +159,7 @@ function endRun(game, victory) {
     game.ui.showVictory(game);
   } else {
     game.audio.gameOver();
-    game.ui.showGameOver(game);
+    game.ui.showGameOver(game, reason);
   }
   if (game.score > game.best) {
     game.best = game.score;
@@ -156,6 +171,8 @@ function endRun(game, victory) {
 
 function damagePlayer(game, amount) {
   const p = game.player;
+  // Screenshot simulations never kill the ship: the shot must stay mid-fight.
+  if (game.shotSim) return;
   if (p.invuln > 0 || game.state !== 'playing') return;
   p.hp -= amount;
   p.invuln = CONFIG.CONTACT_IFRAMES;
@@ -216,6 +233,12 @@ function handleCollisions(game) {
       const dy = b.y - e.y;
       const rr = b.r + e.r;
       if (dx * dx + dy * dy > rr * rr) continue;
+      // The Warden's shield eats the shot: no damage, just a spark of protest.
+      if (e.shieldT > 0) {
+        addText(game, e.x, e.y - e.r - 4, 'SHIELDED', '#7df9ff', 13);
+        consumed = true;
+        break;
+      }
       // Critical hits double the damage and flash gold.
       const crit = game.rng.chance(p.mods.critChance);
       const dmg = b.damage * (crit ? 2 : 1);
@@ -259,7 +282,32 @@ function handleCollisions(game) {
       game.enemyBullets.splice(i, 1);
       damagePlayer(game, b.damage);
       if (game.state !== 'playing') return;
+      continue;
     }
+    // Enemy fire that crosses the Heart wounds it too: never hide behind it.
+    const heart = game.heart;
+    const hx = heart.x - b.x;
+    const hy = heart.y - b.y;
+    const hr = heart.r + b.r;
+    if (hx * hx + hy * hy <= hr * hr) {
+      game.enemyBullets.splice(i, 1);
+      hurtHeart(game, b.damage);
+      if (game.state !== 'playing') return;
+    }
+  }
+
+  // Enemies reaching the Heart bite it. Kindlers exist for this; the Tyrant
+  // does it worst of all when it lunges at the core.
+  for (let ei = game.enemies.length - 1; ei >= 0; ei -= 1) {
+    const e = game.enemies[ei];
+    if (e.spawnT > 0) continue;
+    const heart = game.heart;
+    const dx = heart.x - e.x;
+    const dy = heart.y - e.y;
+    const rr = heart.r + e.r;
+    if (dx * dx + dy * dy > rr * rr) continue;
+    damageHeart(game, e);
+    if (game.state !== 'playing') return;
   }
 
   // Pickups vs the player.
@@ -295,6 +343,7 @@ function stepGame(game, dt) {
   }
 
   updatePlayer(game, dt);
+  updateHeart(game, dt);
   updateSpawning(game, dt);
   for (const e of game.enemies) updateEnemy(game, e, dt);
   updateBullets(game, dt);
@@ -305,14 +354,16 @@ function stepGame(game, dt) {
 
   if (game.state !== 'playing') return;
 
-  // Wave cleared: bonus, then the upgrade choice (or victory after wave 10).
-  // Screenshot simulations keep the wave alive so the scene stays mid-fight.
+  // Night cleared: bonus, the Heart knits itself together, then the upgrade
+  // choice (or victory after night 10).
+  // Screenshot simulations keep the night alive so the scene stays mid-fight.
   if (waveIsCleared(game) && !game.waveCleared && !game.shotSim) {
     game.waveCleared = true;
     game.waveActive = false;
     game.score += CONFIG.WAVE_CLEAR_BONUS;
+    mendHeartBetweenNights(game);
     game.audio.waveClear();
-    game.ui.showToast(`WAVE ${game.wave} CLEAR!  +${CONFIG.WAVE_CLEAR_BONUS}`);
+    game.ui.showToast(`NIGHT ${game.wave} CLEAR!  +${CONFIG.WAVE_CLEAR_BONUS}`);
     if (game.wave >= CONFIG.TOTAL_WAVES) {
       endRun(game, true);
     } else {
@@ -329,6 +380,11 @@ function pickUpgrade(game, choice) {
   if (choice.id === 'maxhp') {
     game.player.maxHp = CONFIG.PLAYER_MAX_HP + game.player.mods.maxHpBonus;
     game.player.hp = Math.min(game.player.maxHp, game.player.hp + CONFIG.HEART_HEAL);
+  }
+  if (choice.id === 'mendheart') {
+    // Mend the Heart: raise its max, then heal it by half its new max.
+    game.heart.maxHp += 25;
+    game.heart.hp = Math.min(game.heart.maxHp, game.heart.hp + 50);
   }
   game.audio.upgrade();
   game.ui.showToast(`UPGRADE: ${choice.name}`);
@@ -375,6 +431,9 @@ function main() {
     onTitle: () => {
       game.state = 'title';
       game.player = createPlayer(defaultMods());
+      game.heart = createHeart();
+      game.nightName = '';
+      game.nightDark = false;
       game.enemies = [];
       game.bullets = [];
       game.enemyBullets = [];
@@ -408,6 +467,13 @@ function main() {
   // The shot helpers drive the real step function through these hooks.
   game.__startRun = () => startRun(game);
   game.__step = (dt) => stepGame(game, dt);
+  // Hooks the Heart module and the enemy AI call back into the game through,
+  // so the modules never import the game's own state machine.
+  game.__killEnemy = (enemy, index) => killEnemy(game, enemy, index);
+  game.__addShake = (mag) => addShake(game, mag);
+  game.__addText = (x, y, text, color, size) => addText(game, x, y, text, color, size);
+  game.__endRun = (victory, reason) => endRun(game, victory, reason);
+  game.__heartLightRadius = () => heartLightRadius(game);
   if (game.shotMode) {
     applyShot(game, game.shotMode);
     game.frozen = true;
@@ -486,10 +552,12 @@ function main() {
       game.hurtFlash = Math.max(0, game.hurtFlash - dt * 2.2);
     }
 
-    // Title screen: gentle idle drift of the ship.
+    // Title screen: gentle idle drift of the ship below the Heart, and the
+    // Heart keeps beating.
     if (game.state === 'title' && game.player) {
       game.time += dt;
-      game.player.y = CONFIG.HEIGHT / 2 + Math.sin(game.time * 1.2) * 12;
+      game.heart.pulse += dt * 1.6;
+      game.player.y = CONFIG.HEIGHT / 2 + 160 + Math.sin(game.time * 1.2) * 12;
       game.player.angle = -Math.PI / 2 + Math.sin(game.time * 0.8) * 0.15;
     }
 

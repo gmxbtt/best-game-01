@@ -1,7 +1,9 @@
-// EMBERFALL — wave flow: build a spawn queue from the wave's composition, feed it
-// in over time, and know when a wave is over. Boss waves announce themselves.
+// EMBERFALL — night flow: build a spawn queue from the night's composition,
+// feed it in over time, and know when a night is over. Boss nights announce
+// themselves, dark nights dim the arena, and every night opens with its name
+// on a banner so the run reads like a story: ten nights, one Heart.
 
-import { CONFIG, waveComposition } from './config.js';
+import { CONFIG, NIGHTS, nightComposition } from './config.js';
 import { createEnemy } from './entities.js';
 
 export function startWave(game, wave) {
@@ -9,8 +11,11 @@ export function startWave(game, wave) {
   game.waveActive = true;
   game.waveCleared = false;
   game.spawnQueue = [];
-  const comp = waveComposition(wave);
-  // Interleave the types so the wave arrives mixed, not in blocks.
+  const night = NIGHTS[wave - 1] ?? NIGHTS[0];
+  game.nightName = night.name;
+  game.nightDark = night.dark;
+  const comp = nightComposition(wave);
+  // Interleave the types so the night arrives mixed, not in blocks.
   const bag = [];
   for (const entry of comp) {
     for (let i = 0; i < entry.count; i += 1) bag.push(entry.type);
@@ -25,8 +30,11 @@ export function startWave(game, wave) {
   game.spawnQueue = bag;
   game.spawnTimer = 0.8;
   game.betweenWaveTimer = 0;
+  game.ui.showNightBanner(wave, night.name, night.twist);
   if (CONFIG.BOSS_WAVES.includes(wave)) {
     game.audio.bossAlarm();
+  } else {
+    game.audio.nightSting();
   }
 }
 
@@ -55,8 +63,12 @@ export function updateSpawning(game, dt) {
       drag: 1,
     });
   }
-  // Next spawn comes sooner as the wave goes on; bosses get a breather first.
-  game.spawnTimer = type === 'boss' ? 1.5 : Math.max(0.25, 0.9 - game.wave * 0.05);
+  // Next spawn comes sooner as the nights go on; bosses get a breather first.
+  // Dark nights and the Last Night pour faster still.
+  let interval = Math.max(0.25, 0.9 - game.wave * 0.05);
+  if (game.nightDark) interval *= 0.8;
+  if (game.wave >= 10) interval *= 0.75;
+  game.spawnTimer = type === 'boss' ? 1.5 : interval;
 }
 
 function edgeSpawnPosition(game) {

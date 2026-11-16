@@ -2,10 +2,10 @@
 // fixed scene from the seeded RNG, then main.js freezes the simulation so the
 // screenshot is reproducible: same seed, same pixels.
 //
-//   ?shot=start  title screen with a best score shown
-//   ?shot=play   mid-game, wave 4, enemies on screen, HUD filled
-//   ?shot=boss   fighting the wave-5 boss
-//   ?shot=end    game-over screen with a score
+//   ?shot=start    title screen with a best score shown
+//   ?shot=play     mid-game, night 4, Kindlers hunting the Heart, HUD filled
+//   ?shot=boss     fighting the night-5 boss while a Kindler closes on the Heart
+//   ?shot=victory  the dawn-breaks victory screen after night 10
 
 import { CONFIG } from './config.js';
 import { createEnemy, spawnExplosion } from './entities.js';
@@ -51,7 +51,8 @@ export function applyShot(game, shot) {
   }
 
   if (shot === 'play') {
-    // Fresh run, wave 4, a busy mid-game scene.
+    // Fresh run, night 4 ("Kindlers Wake"): a busy mid-game scene, Kindlers
+    // closing on the Heart from every edge, the Heart already bloodied.
     game.__startRun();
     game.ui.showOnly(null); // hide the title overlay, show the HUD
     game.enemies = [];
@@ -62,7 +63,29 @@ export function applyShot(game, shot) {
     game.embers = 31;
     game.combo = 7;
     game.comboTimer = CONFIG.COMBO_WINDOW;
+    game.heart.hp = 150;
     game.shotSim = true;
+    // The ship holds below the Heart, so the shot shows both at once.
+    game.player.x = 640;
+    game.player.y = 520;
+    // A full arena, placed by hand: Kindlers converging on the Heart, a
+    // Spitter holding range, Drifters and Darts closing on the ship.
+    const placed = [
+      ['kindler', 640, 120], ['kindler', 180, 360], ['kindler', 1100, 360],
+      ['drifter', 420, 200], ['drifter', 860, 520], ['drifter', 240, 520],
+      ['dart', 950, 180], ['dart', 320, 480], ['dart', 1050, 500],
+      ['spitter', 180, 180], ['spitter', 1080, 200],
+      ['splitter', 700, 560], ['splitter', 480, 520],
+    ];
+    for (const [type, x, y] of placed) {
+      const e = createEnemy(game, type, x, y);
+      e.spawnT = 0;
+      game.enemies.push(e);
+    }
+    // A scatter of embers on the floor, fresh from kills.
+    for (const [x, y] of [[500, 300], [760, 420], [620, 480], [880, 300]]) {
+      game.pickups.push({ kind: 'ember', x, y, vx: 0, vy: 0, r: 8, life: 9, bob: 0 });
+    }
     simulateFight(game, 300);
     game.shotSim = false;
     game.ui.updateHUD(game);
@@ -76,12 +99,18 @@ export function applyShot(game, shot) {
     game.spawnQueue = [];
     game.wave = 5;
     game.waveActive = true;
+    game.nightName = 'The Tyrant Wakes';
     game.score = 3420;
     game.kills = 58;
     game.embers = 74;
     game.combo = 5;
     game.comboTimer = CONFIG.COMBO_WINDOW;
-    // The Tyrant, centre-top, plus two drifters as escorts.
+    game.heart.hp = 150;
+    // The ship holds below the Heart, so the shot shows both fights at once.
+    game.player.x = 640;
+    game.player.y = 520;
+    // The Tyrant, centre-top, plus two drifters as escorts — and a Kindler
+    // already closing on the Heart, so the shot shows both fights at once.
     const boss = createEnemy(game, 'boss', CONFIG.WIDTH / 2, 190);
     boss.spawnT = 0;
     game.enemies.push(boss);
@@ -91,7 +120,15 @@ export function applyShot(game, shot) {
       d.spawnT = 0;
       game.enemies.push(d);
     }
+    const kindler = createEnemy(game, 'kindler', 640, 560);
+    kindler.spawnT = 0;
+    game.enemies.push(kindler);
+    const spitter = createEnemy(game, 'spitter', 180, 540);
+    spitter.spawnT = 0;
+    game.enemies.push(spitter);
     game.audio.bossAlarm();
+    // No night banner here: the boss and the HUD already say night 5.
+    game.ui.hideNightBanner();
     game.shotSim = true;
     simulateFight(game, 200);
     game.shotSim = false;
@@ -99,25 +136,30 @@ export function applyShot(game, shot) {
     return;
   }
 
-  if (shot === 'end') {
+  if (shot === 'victory') {
+    // Dawn breaks: night 10 cleared, the victory screen with its stats and
+    // restart, the Heart still burning behind it.
     game.__startRun();
     game.enemies = [];
     game.spawnQueue = [];
     game.waveActive = false;
-    game.score = 1840;
-    game.wave = 6;
-    game.kills = 87;
-    game.embers = 42;
-    game.player.hp = 0;
-    // A few drifters drifting past the wreckage, for a lived-in backdrop.
-    for (const [x, y] of [[300, 220], [900, 160], [640, 480]]) {
+    game.wave = 10;
+    game.nightName = 'The Last Night';
+    game.score = 9840;
+    game.kills = 187;
+    game.embers = 96;
+    game.heart.hp = 62;
+    // The Tyrant's last explosion, still blooming, for a lived-in backdrop.
+    spawnExplosion(game, CONFIG.WIDTH / 2 + 180, 200, '#ff6b00', true);
+    for (const [x, y] of [[300, 220], [900, 160], [640, 520]]) {
       const d = createEnemy(game, 'drifter', x, y);
       d.spawnT = 0;
       game.enemies.push(d);
     }
-    spawnExplosion(game, CONFIG.WIDTH / 2, CONFIG.HEIGHT / 2, '#ffb347', true);
-    game.state = 'gameover';
-    game.ui.showGameOver(game);
+    game.state = 'victory';
+    // No night banner behind the victory screen.
+    game.ui.hideNightBanner();
+    game.ui.showVictory(game);
     return;
   }
 

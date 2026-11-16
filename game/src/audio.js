@@ -127,6 +127,36 @@ export class AudioEngine {
     });
   }
 
+  // A low bell at the opening of each night.
+  nightSting() {
+    this._tone({ type: 'sine', freq: 196, dur: 0.7, vol: 0.22 });
+    this._tone({ type: 'sine', freq: 294, dur: 0.7, vol: 0.14, when: 0.08 });
+  }
+
+  // The Heart's slow thump when it runs low: two low beats, dread you hear.
+  heartbeat() {
+    this._tone({ type: 'sine', freq: 65, freqEnd: 40, dur: 0.16, vol: 0.4 });
+    this._tone({ type: 'sine', freq: 55, freqEnd: 35, dur: 0.18, vol: 0.3, when: 0.18 });
+  }
+
+  // The Heart takes a bite: a wet, low crack.
+  heartHurt() {
+    this._tone({ type: 'sawtooth', freq: 140, freqEnd: 50, dur: 0.28, vol: 0.3 });
+    this._noise({ dur: 0.12, vol: 0.18, freq: 700 });
+  }
+
+  // The Heartpulse nova going off: a bright rising ring of sound.
+  nova() {
+    this._tone({ type: 'triangle', freq: 330, freqEnd: 990, dur: 0.3, vol: 0.22 });
+    this._noise({ dur: 0.25, vol: 0.15, freq: 2800 });
+  }
+
+  // The Warden raising its shield: a cold shimmer.
+  shield() {
+    this._tone({ type: 'sine', freq: 1175, dur: 0.18, vol: 0.12 });
+    this._tone({ type: 'sine', freq: 1568, dur: 0.22, vol: 0.1, when: 0.08 });
+  }
+
   gameOver() {
     [392, 330, 262, 196].forEach((f, i) => {
       this._tone({ type: 'triangle', freq: f, dur: 0.3, vol: 0.22, when: i * 0.16 });

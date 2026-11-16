@@ -10,34 +10,64 @@ export function createUI(handlers) {
     hearts: $('hearts'),
     hpFill: $('hp-fill'),
     hpText: $('hp-text'),
+    heartFill: $('heart-fill'),
+    heartText: $('heart-text'),
     score: $('score'),
     wave: $('wave'),
+    nightName: $('night-name'),
     combo: $('combo'),
     embers: $('embers'),
     bossBar: $('boss-bar'),
     bossName: $('boss-name'),
     bossFill: $('boss-fill'),
+    nightBanner: $('night-banner'),
+    bannerTitle: $('banner-title'),
+    bannerTwist: $('banner-twist'),
     title: $('title-screen'),
     bestScore: $('best-score'),
     upgrade: $('upgrade-screen'),
     upgradeCards: $('upgrade-cards'),
     pause: $('pause-screen'),
     gameover: $('gameover-screen'),
+    gameoverTitle: $('gameover-title'),
+    gameoverSub: $('gameover-sub'),
     finalScore: $('final-score'),
     finalWave: $('final-wave'),
     finalKills: $('final-kills'),
     victory: $('victory-screen'),
     victoryScore: $('victory-score'),
+    victoryKills: $('victory-kills'),
+    victoryHeart: $('victory-heart'),
     toast: $('toast'),
   };
 
   let toastTimer = null;
+  let bannerTimer = null;
+
+  function showNightBanner(wave, name, twist) {
+    els.bannerTitle.textContent = `NIGHT ${wave} — ${name.toUpperCase()}`;
+    els.bannerTwist.textContent = twist;
+    els.nightBanner.classList.remove('hidden');
+    els.nightBanner.classList.add('show');
+    if (bannerTimer) window.clearTimeout(bannerTimer);
+    bannerTimer = window.setTimeout(() => els.nightBanner.classList.remove('show'), 2600);
+  }
+
+  function hideNightBanner() {
+    if (bannerTimer) window.clearTimeout(bannerTimer);
+    els.nightBanner.classList.remove('show');
+  }
 
   function showToast(text, ms = 2200) {
     els.toast.textContent = text;
     els.toast.classList.add('show');
     if (toastTimer) window.clearTimeout(toastTimer);
     toastTimer = window.setTimeout(() => els.toast.classList.remove('show'), ms);
+  }
+
+  function hideToast() {
+    if (toastTimer) window.clearTimeout(toastTimer);
+    els.toast.classList.remove('show');
   }
 
   function showOnly(name) {
@@ -63,8 +93,17 @@ export function createUI(handlers) {
     els.hpFill.style.width = `${hpFrac * 100}%`;
     els.hpFill.classList.toggle('low', hpFrac < 0.3);
     els.hpText.textContent = `${Math.ceil(p.hp)} / ${p.maxHp}`;
+    // The Heart's own bar: the second health bar, the one the run is about.
+    const heart = game.heart;
+    if (heart) {
+      const heartFrac = Math.max(0, heart.hp / heart.maxHp);
+      els.heartFill.style.width = `${heartFrac * 100}%`;
+      els.heartFill.classList.toggle('low', heartFrac < 0.35);
+      els.heartText.textContent = `♥ ${Math.ceil(heart.hp)} / ${heart.maxHp}`;
+    }
     els.score.textContent = String(game.score);
-    els.wave.textContent = `WAVE ${game.wave} / 10`;
+    els.wave.textContent = `NIGHT ${game.wave} / 10`;
+    els.nightName.textContent = game.nightName ? `— ${game.nightName.toUpperCase()} —` : '';
     els.embers.textContent = `⬢ ${game.embers}`;
     const mult = game.comboMultiplier();
     els.combo.textContent = game.combo > 1 ? `COMBO x${mult.toFixed(1)} (${game.combo})` : '';
@@ -102,8 +141,15 @@ export function createUI(handlers) {
     showOnly('pause');
   }
 
-  function showGameOver(game) {
+  function showGameOver(game, reason) {
     showOnly('gameover');
+    if (reason === 'heart') {
+      els.gameoverTitle.textContent = 'THE HEART IS ASH';
+      els.gameoverSub.textContent = 'The last ember is out. The dark takes the arena.';
+    } else {
+      els.gameoverTitle.textContent = 'EMBER DOWN';
+      els.gameoverSub.textContent = 'The arena keeps your score — but the Heart burns on.';
+    }
     els.finalScore.textContent = String(game.score);
     els.finalWave.textContent = String(game.wave);
     els.finalKills.textContent = String(game.kills);
@@ -112,6 +158,8 @@ export function createUI(handlers) {
   function showVictory(game) {
     showOnly('victory');
     els.victoryScore.textContent = String(game.score);
+    els.victoryKills.textContent = String(game.kills);
+    els.victoryHeart.textContent = game.heart ? `${Math.ceil(game.heart.hp)} / ${game.heart.maxHp}` : '—';
   }
 
   // Buttons.
@@ -126,6 +174,9 @@ export function createUI(handlers) {
 
   return {
     showToast,
+    hideToast,
+    showNightBanner,
+    hideNightBanner,
     showOnly,
     updateHUD,
     showTitle,

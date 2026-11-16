@@ -8,8 +8,9 @@ import { CONFIG } from './config.js';
 
 export function createPlayer(mods) {
   return {
+    // The ship holds below the Heart, so the two never overlap at spawn.
     x: CONFIG.WIDTH / 2,
-    y: CONFIG.HEIGHT / 2,
+    y: CONFIG.HEIGHT / 2 + 160,
     vx: 0,
     vy: 0,
     r: CONFIG.PLAYER_RADIUS,
@@ -170,10 +171,17 @@ export function createEnemy(game, type, x, y) {
     shootTimer: game.rng.range(1.2, 2.4),
     angle: 0,
     wobble: game.rng.range(0, Math.PI * 2),
+    // Who this enemy hunts: Kindlers run for the Heart, the rest hunt the ship.
+    target: type === 'kindler' ? 'heart' : 'player',
+    heartHitT: 0, // cooldown between bites at the Heart
+    shieldT: 0, // the Warden's shield: no damage while this runs
+    shieldTimer: 3, // the Warden's own shield pulse timer
+    concealed: false, // Shades hide in the dark, outside the Heart's light
     // Boss-only state.
     attackTimer: 2.5,
     attackKind: 0,
     charging: 0,
+    chargeTarget: 'player', // the boss's lunge aims at the player — or the Heart
   };
   return enemy;
 }
@@ -182,13 +190,18 @@ export function updateEnemy(game, e, dt) {
   const p = game.player;
   e.flash = Math.max(0, e.flash - dt);
   e.wobble += dt * 3;
+  e.heartHitT = Math.max(0, e.heartHitT - dt);
+  e.shieldT = Math.max(0, e.shieldT - dt);
   if (e.spawnT > 0) {
     e.spawnT -= dt;
     return;
   }
 
-  const dx = p.x - e.x;
-  const dy = p.y - e.y;
+  // Where this enemy is headed: the ship, or the Heart it wants to snuff out.
+  const tx = e.target === 'heart' ? game.heart.x : p.x;
+  const ty = e.target === 'heart' ? game.heart.y : p.y;
+  const dx = tx - e.x;
+  const dy = ty - e.y;
   const dist = Math.hypot(dx, dy) || 1;
   const nx = dx / dist;
   const ny = dy / dist;
@@ -236,6 +249,45 @@ export function updateEnemy(game, e, dt) {
       }
       break;
     }
+    case 'kindler': {
+      // A living spark that runs straight for the Heart, ignoring the ship.
+      // It weaves a little so it cannot be lined up for free.
+      const weave = Math.sin(e.wobble * 1.4) * 0.45;
+      e.vx = (nx + -ny * weave) * e.speed;
+      e.vy = (ny + nx * weave) * e.speed;
+      break;
+    }
+    case 'shade': {
+      // A ghost that hunts the ship — but only the Heart's light reveals it.
+      // Beyond the light it is a whisper: nearly invisible, and it drifts
+      // slower, circling in the dark until the light catches it.
+      const lightR = game.__heartLightRadius();
+      const dHeart = Math.hypot(game.heart.x - e.x, game.heart.y - e.y);
+      e.concealed = dHeart > lightR + 20;
+      const pace = e.concealed ? 0.55 : 1;
+      e.vx = nx * e.speed * pace;
+      e.vy = ny * e.speed * pace;
+      break;
+    }
+    case 'warden': {
+      // A slow bulwark that shields the swarm around it. Break the Warden
+      // first, or its escorts fight under an unbreakable ring.
+      e.vx = nx * e.speed;
+      e.vy = ny * e.speed;
+      e.shieldTimer -= dt;
+      if (e.shieldTimer <= 0) {
+        e.shieldTimer = 4;
+        for (const other of game.enemies) {
+          if (other === e || other.type === 'boss') continue;
+          if (Math.hypot(other.x - e.x, other.y - e.y) < 190) {
+            other.shieldT = 2.2;
+          }
+        }
+        game.audio.shield();
+        game.__addText(e.x, e.y - e.r - 10, 'SHIELDED', '#c9b8ff', 15);
+      }
+      break;
+    }
     case 'boss': {
       updateBoss(game, e, dt, nx, ny, dist);
       break;
@@ -256,13 +308,22 @@ function updateBoss(game, e, dt, nx, ny, dist) {
   e.attackTimer -= dt;
 
   if (e.charging > 0) {
-    // Telegraph then lunge at the player.
+    // Telegraph then lunge — at the ship, or at the Heart it wants to eat.
     e.charging -= dt;
     e.vx = 0;
     e.vy = 0;
     if (e.charging <= 0) {
-      e.vx = nx * 520;
-      e.vy = ny * 520;
+      let lx = nx;
+      let ly = ny;
+      if (e.chargeTarget === 'heart') {
+        const hx = game.heart.x - e.x;
+        const hy = game.heart.y - e.y;
+        const hd = Math.hypot(hx, hy) || 1;
+        lx = hx / hd;
+        ly = hy / hd;
+      }
+      e.vx = lx * 520;
+      e.vy = ly * 520;
       game.audio.enemyShoot();
     }
     return;
@@ -273,7 +334,7 @@ function updateBoss(game, e, dt, nx, ny, dist) {
   e.vy = ny * e.speed;
 
   if (e.attackTimer <= 0) {
-    e.attackKind = (e.attackKind + 1) % 3;
+    e.attackKind = (e.attackKind + 1) % 4;
     if (e.attackKind === 0) {
       // Radial burst: 12 orbs in a ring.
       for (let i = 0; i < 12; i += 1) {
@@ -307,10 +368,37 @@ function updateBoss(game, e, dt, nx, ny, dist) {
       }
       game.audio.enemyShoot();
       e.attackTimer = 2.4;
-    } else {
-      // Charge telegraph: flash, pause, then lunge (handled above).
+    } else if (e.attackKind === 2) {
+      // Charge telegraph: flash, pause, then lunge at the ship.
+      e.chargeTarget = 'player';
       e.charging = 0.7;
       e.attackTimer = 3.0;
+    } else {
+      // On the Last Night the Tyrant stops hunting the ship and goes for
+      // the Heart itself: a telegraphed lunge at the arena's core. On the
+      // first Tyrant night it falls back to a radial burst instead.
+      if (game.wave >= 10) {
+        e.chargeTarget = 'heart';
+        e.charging = 0.9;
+        game.audio.bossAlarm();
+        game.ui.showToast('THE TYRANT CHARGES THE HEART!');
+        e.attackTimer = 3.4;
+      } else {
+        for (let i = 0; i < 12; i += 1) {
+          const a = (i / 12) * Math.PI * 2 + game.rng.range(0, 0.4);
+          game.enemyBullets.push({
+            x: e.x,
+            y: e.y,
+            vx: Math.cos(a) * CONFIG.ENEMY_BULLET_SPEED,
+            vy: Math.sin(a) * CONFIG.ENEMY_BULLET_SPEED,
+            r: CONFIG.ENEMY_BULLET_RADIUS,
+            damage: e.damage,
+            life: 5,
+          });
+        }
+        game.audio.enemyShoot();
+        e.attackTimer = 3.2;
+      }
     }
   }
 }

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>EMBERFALL — Neon Arena Survival</title>
+<title>EMBERFALL — Hold the Last Ember</title>
 <link rel="icon" href="data:,">
 <link rel="stylesheet" href="./css/style.css">
 </head>
@@ -17,10 +17,14 @@
       <div id="hearts"></div>
       <div id="hp-bar"><div id="hp-fill"></div></div>
       <div id="hp-text"></div>
+      <div id="heart-label">♥ EMBER HEART</div>
+      <div id="heart-bar"><div id="heart-fill"></div></div>
+      <div id="heart-text"></div>
     </div>
     <div id="hud-center">
       <div id="score">0</div>
-      <div id="wave">WAVE 1 / 10</div>
+      <div id="wave">NIGHT 1 / 10</div>
+      <div id="night-name"></div>
       <div id="combo"></div>
     </div>
     <div id="hud-right">
@@ -33,15 +37,22 @@
     </div>
   </div>
 
+  <!-- Night banner: each night opens with its name -->
+  <div id="night-banner" class="hidden">
+    <div id="banner-title"></div>
+    <div id="banner-twist"></div>
+  </div>
+
   <!-- Title screen -->
   <div id="title-screen" class="overlay">
     <h1 class="game-title">EMBER<span>FALL</span></h1>
-    <p class="tagline">Hold the arena. Ten waves. One ember ship. No mercy.</p>
+    <p class="tagline">Hold the last ember. Ten nights. One heart of fire.</p>
     <div class="howto">
       <p><b>WASD / Arrows</b> — fly &nbsp;·&nbsp; <b>Mouse</b> — aim &nbsp;·&nbsp; <b>Hold Click / Space</b> — fire</p>
       <p><b>Shift</b> — dash (brief invulnerability) &nbsp;·&nbsp; <b>P / Esc</b> — pause &nbsp;·&nbsp; <b>M</b> — mute</p>
-      <p>Slay enemies to build your combo, grab their embers, and pick an upgrade after every wave.</p>
-      <p>Survive all 10 waves — the Ember Tyrant waits at waves 5 and 10.</p>
+      <p>The <b>Ember Heart</b> burns at the arena's core. Kindlers and the Tyrant hunt it — <b>if it falls, the night wins</b>, even if your ship still flies.</p>
+      <p>Slay enemies to build your combo, grab their embers, and pick an upgrade after every night. On dark nights only the Heart's light can be trusted.</p>
+      <p>Survive all 10 nights — the Ember Tyrant waits at nights 5 and 10.</p>
     </div>
     <button id="btn-start" class="big-btn" type="button">▶ &nbsp;START — click or press Enter</button>
     <p id="best-score" class="best"></p>
@@ -49,7 +60,7 @@
 
   <!-- Upgrade choice -->
   <div id="upgrade-screen" class="overlay hidden">
-    <h2 class="screen-title">WAVE CLEARED — CHOOSE AN UPGRADE</h2>
+    <h2 class="screen-title">NIGHT CLEARED — CHOOSE AN UPGRADE</h2>
     <p class="screen-sub">Pick one. Press 1, 2 or 3, or click a card.</p>
     <div id="upgrade-cards"></div>
   </div>
@@ -64,11 +75,11 @@
 
   <!-- Game over -->
   <div id="gameover-screen" class="overlay hidden">
-    <h2 class="screen-title danger">EMBER DOWN</h2>
-    <p class="screen-sub">The arena keeps your score.</p>
+    <h2 id="gameover-title" class="screen-title danger">EMBER DOWN</h2>
+    <p id="gameover-sub" class="screen-sub">The arena keeps your score.</p>
     <div class="stats">
       <div><span>SCORE</span><b id="final-score">0</b></div>
-      <div><span>WAVE REACHED</span><b id="final-wave">1</b></div>
+      <div><span>NIGHT REACHED</span><b id="final-wave">1</b></div>
       <div><span>ENEMIES SLAIN</span><b id="final-kills">0</b></div>
     </div>
     <button id="btn-restart-over" class="big-btn" type="button">↻ &nbsp;PLAY AGAIN (Enter)</button>
@@ -77,10 +88,12 @@
 
   <!-- Victory -->
   <div id="victory-screen" class="overlay hidden">
-    <h2 class="screen-title gold">ARENA CONQUERED</h2>
-    <p class="screen-sub">Ten waves. The Tyrant is ash. You are the last ember burning.</p>
+    <h2 class="screen-title gold">DAWN BREAKS</h2>
+    <p class="screen-sub">Ten nights. The Tyrant is ash. The Ember Heart still burns — because you held it.</p>
     <div class="stats">
       <div><span>FINAL SCORE</span><b id="victory-score">0</b></div>
+      <div><span>ENEMIES SLAIN</span><b id="victory-kills">0</b></div>
+      <div><span>HEART REMAINING</span><b id="victory-heart">0</b></div>
     </div>
     <button id="btn-restart-victory" class="big-btn" type="button">↻ &nbsp;PLAY AGAIN (Enter)</button>
     <button id="btn-title-victory" class="ghost-btn" type="button">Title screen</button>

@@ -1,18 +1,41 @@
 // EMBERFALL — rendering. Everything on the canvas is drawn here, procedurally:
-// a neon starfield arena, the ember ship, the five enemy kinds, bullets, pickups,
-// particles and floating text. No images, no external assets.
+// a neon starfield arena, the burning Ember Heart at its core, the ember ship,
+// the eight enemy kinds, bullets, pickups, particles and floating text. No
+// images, no external assets.
 
 import { CONFIG } from './config.js';
+import { heartLightRadius } from './heart.js';
 
 // A fixed starfield, generated once per page load (not per frame).
 const STARS = [];
-for (let i = 0; i < 130; i += 1) {
+for (let i = 0; i < 200; i += 1) {
   STARS.push({
     x: Math.random() * CONFIG.WIDTH,
     y: Math.random() * CONFIG.HEIGHT,
     r: Math.random() * 1.6 + 0.4,
     tw: Math.random() * Math.PI * 2,
     speed: Math.random() * 0.8 + 0.2,
+  });
+}
+
+// Nebula blobs: slow colour in the dark, so the arena never reads as void.
+const NEBULAE = [
+  { x: 260, y: 180, r: 300, color: 'rgba(123, 47, 190, 0.16)' },
+  { x: 1020, y: 520, r: 340, color: 'rgba(255, 59, 48, 0.10)' },
+  { x: 980, y: 140, r: 240, color: 'rgba(255, 159, 28, 0.08)' },
+  { x: 300, y: 560, r: 260, color: 'rgba(47, 120, 190, 0.10)' },
+];
+
+// Ember motes: cinders always drifting up through the arena.
+const MOTES = [];
+for (let i = 0; i < 42; i += 1) {
+  MOTES.push({
+    x: Math.random() * CONFIG.WIDTH,
+    y: Math.random() * CONFIG.HEIGHT,
+    r: Math.random() * 1.8 + 0.7,
+    phase: Math.random() * Math.PI * 2,
+    speed: 6 + Math.random() * 14,
+    sway: 8 + Math.random() * 14,
   });
 }
 
@@ -28,12 +51,14 @@ export function drawGame(game) {
   }
 
   drawBackground(game, ctx);
+  drawHeart(game, ctx);
   drawPickups(game, ctx);
   drawEnemies(game, ctx);
   drawBullets(game, ctx);
   drawPlayer(game, ctx);
   drawParticles(game, ctx);
   drawTexts(game, ctx);
+  drawDarkness(game, ctx);
   ctx.restore();
 
   // Red damage vignette flash.
@@ -51,6 +76,15 @@ function drawBackground(game, ctx) {
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
+  // Nebula wash, so the dark has colour and depth.
+  for (const n of NEBULAE) {
+    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, n.r);
+    g.addColorStop(0, n.color);
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.fillRect(n.x - n.r, n.y - n.r, n.r * 2, n.r * 2);
+  }
+
   // Stars, gently twinkling.
   for (const s of STARS) {
     const a = 0.35 + 0.4 * Math.abs(Math.sin(game.time * s.speed + s.tw));
@@ -58,6 +92,19 @@ function drawBackground(game, ctx) {
     ctx.fillStyle = '#cdd6ff';
     ctx.beginPath();
     ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Ember motes drifting up through the arena.
+  for (const m of MOTES) {
+    const y = (m.y - game.time * m.speed) % HEIGHT;
+    const yy = y < 0 ? y + HEIGHT : y;
+    const x = m.x + Math.sin(game.time * 0.7 + m.phase) * m.sway;
+    ctx.globalAlpha = 0.25 + 0.35 * Math.abs(Math.sin(game.time + m.phase));
+    ctx.fillStyle = '#ffb347';
+    ctx.beginPath();
+    ctx.arc(x, yy, m.r, 0, Math.PI * 2);
     ctx.fill();
   }
   ctx.globalAlpha = 1;
@@ -80,6 +127,110 @@ function drawBackground(game, ctx) {
   ctx.strokeStyle = 'rgba(255, 179, 71, 0.35)';
   ctx.lineWidth = 2;
   ctx.strokeRect(6, 6, WIDTH - 12, HEIGHT - 12);
+}
+
+// The Ember Heart: the burning core of the arena. A pool of light, a pulsing
+// heart, an HP ring, and embers orbiting it — the one thing on screen the
+// player must never lose sight of.
+function drawHeart(game, ctx) {
+  const heart = game.heart;
+  if (!heart) return;
+  const { x, y, r } = heart;
+  const frac = Math.max(0, heart.hp / heart.maxHp);
+  const beat = 1 + Math.sin(heart.pulse * Math.PI * 2) * 0.07;
+  const lightR = heartLightRadius(game);
+
+  // Pool of light on the arena floor.
+  const pool = ctx.createRadialGradient(x, y, 0, x, y, lightR);
+  pool.addColorStop(0, 'rgba(255, 159, 28, 0.20)');
+  pool.addColorStop(0.55, 'rgba(255, 110, 40, 0.08)');
+  pool.addColorStop(1, 'rgba(255, 110, 40, 0)');
+  ctx.fillStyle = pool;
+  ctx.fillRect(x - lightR, y - lightR, lightR * 2, lightR * 2);
+
+  // Orbiting embers.
+  ctx.save();
+  ctx.shadowColor = '#ff9f1c';
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = '#ffcf5c';
+  for (let i = 0; i < 6; i += 1) {
+    const a = game.time * 0.5 + (i / 6) * Math.PI * 2;
+    const ox = x + Math.cos(a) * (r + 20);
+    const oy = y + Math.sin(a) * (r + 20);
+    ctx.beginPath();
+    ctx.arc(ox, oy, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // The heart itself, beating.
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.scale(beat, beat);
+  ctx.shadowColor = frac < 0.35 ? '#ff0033' : '#ff9f1c';
+  ctx.shadowBlur = 30;
+  ctx.fillStyle = frac < 0.35 ? '#ff2e4d' : '#ff4d6d';
+  drawHeartShape(ctx, r);
+  ctx.shadowBlur = 0;
+  ctx.fillStyle = '#ffd6de';
+  ctx.beginPath();
+  ctx.arc(-r * 0.25, -r * 0.3, r * 0.22, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  // HP ring around the Heart: the second health bar, drawn where the fight is.
+  ctx.save();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.55)';
+  ctx.beginPath();
+  ctx.arc(x, y, r + 12, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = frac < 0.35 ? '#ff2e4d' : '#ffb347';
+  ctx.beginPath();
+  ctx.arc(x, y, r + 12, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // Nova flash: the Heartpulse ring racing outwards.
+  if (heart.novaFlash > 0) {
+    const nr = (1 - heart.novaFlash) * CONFIG.HEART_NOVA_RADIUS;
+    ctx.save();
+    ctx.globalAlpha = heart.novaFlash;
+    ctx.strokeStyle = '#ffe66d';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.arc(x, y, nr + r, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// On dark nights the arena drowns in dark except where light reaches: the
+// Heart's pool and a small glow around the ship. Shades hide beyond it.
+function drawDarkness(game, ctx) {
+  if (!game.nightDark || (game.state !== 'playing' && game.state !== 'upgrade')) return;
+  const { WIDTH, HEIGHT } = CONFIG;
+  const heart = game.heart;
+  const lightR = heartLightRadius(game);
+
+  ctx.save();
+  // A dim veil over everything, then deeper dark that gathers away from
+  // each light, so the Heart's pool and the ship stay readable. The gradient
+  // spans the whole screen so there is never a visible seam.
+  ctx.fillStyle = 'rgba(3, 3, 12, 0.35)';
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  const gather = (cx, cy, radius) => {
+    const far = Math.max(WIDTH, HEIGHT);
+    const g = ctx.createRadialGradient(cx, cy, radius * 0.45, cx, cy, far);
+    g.addColorStop(0, 'rgba(3, 3, 12, 0)');
+    g.addColorStop(0.3, 'rgba(3, 3, 12, 0.3)');
+    g.addColorStop(1, 'rgba(3, 3, 12, 0.5)');
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  };
+  gather(heart.x, heart.y, lightR + 160);
+  if (game.player) gather(game.player.x, game.player.y, 300);
+  ctx.restore();
 }
 
 function drawPlayer(game, ctx) {
@@ -188,6 +339,61 @@ function drawEnemies(game, ctx) {
         ctx.fill();
         break;
       }
+      case 'kindler': {
+        // A living flame, flickering as it runs for the Heart.
+        const flick = 1 + Math.sin(game.time * 13 + e.wobble) * 0.12;
+        ctx.save();
+        ctx.scale(1, flick);
+        ctx.beginPath();
+        ctx.moveTo(0, -e.r * 1.3);
+        ctx.quadraticCurveTo(e.r, 0, 0, e.r);
+        ctx.quadraticCurveTo(-e.r, 0, 0, -e.r * 1.3);
+        ctx.fill();
+        ctx.fillStyle = '#fff3c4';
+        ctx.beginPath();
+        ctx.arc(0, e.r * 0.15, e.r * 0.38, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+        break;
+      }
+      case 'shade': {
+        // A ghost: barely a whisper outside the Heart's light, solid within it.
+        ctx.globalAlpha = e.concealed ? 0.22 : 0.95;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#2a2140';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.55, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#d9ccff';
+        ctx.beginPath();
+        ctx.arc(-e.r * 0.32, -e.r * 0.15, e.r * 0.14, 0, Math.PI * 2);
+        ctx.arc(e.r * 0.32, -e.r * 0.15, e.r * 0.14, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        break;
+      }
+      case 'warden': {
+        // A bulwark: ringed orb with a crown of ash-spikes and a slow spin.
+        ctx.rotate(game.time * 0.4);
+        drawSpikyOrb(ctx, e.r, 8, 0.22);
+        ctx.rotate(-game.time * 0.4);
+        ctx.strokeStyle = '#e9e2ff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.62, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.fillStyle = '#2a1650';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = e.glow;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.2, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
       case 'boss': {
         // Boss: big spiked ring, rotating outer spikes, pulsing core.
         ctx.rotate(game.time * 0.6);
@@ -218,6 +424,18 @@ function drawEnemies(game, ctx) {
         ctx.beginPath();
         ctx.arc(0, 0, e.r, 0, Math.PI * 2);
         ctx.fill();
+    }
+
+    // The Warden's shield: a cyan ring that says "this one cannot be hurt".
+    if (e.shieldT > 0) {
+      ctx.save();
+      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(game.time * 8);
+      ctx.strokeStyle = '#7df9ff';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.r + 6, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // Hit flash: white overlay that fades fast.
@@ -319,13 +537,13 @@ function drawPickups(game, ctx) {
       ctx.shadowColor = CONFIG.COLORS.heart;
       ctx.shadowBlur = 12;
       ctx.fillStyle = CONFIG.COLORS.heart;
-      drawHeart(ctx, pk.r);
+      drawHeartShape(ctx, pk.r);
     }
     ctx.restore();
   }
 }
 
-function drawHeart(ctx, s) {
+function drawHeartShape(ctx, s) {
   ctx.beginPath();
   ctx.moveTo(0, s * 0.7);
   ctx.bezierCurveTo(-s * 1.2, -s * 0.2, -s * 0.6, -s * 1.1, 0, -s * 0.35);

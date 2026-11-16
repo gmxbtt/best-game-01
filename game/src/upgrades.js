@@ -67,6 +67,34 @@ export const UPGRADES = [
     max: 4,
     apply(mods) { mods.critChance += 0.12; },
   },
+  {
+    id: 'mendheart',
+    name: 'Mend the Heart',
+    desc: 'Heal the Heart 50 and raise its max by 25',
+    max: 3,
+    apply(mods) { mods.heartMend += 1; },
+  },
+  {
+    id: 'thorns',
+    name: 'Heart Thorns',
+    desc: 'The Heart wounds every enemy that bites it (+12)',
+    max: 3,
+    apply(mods) { mods.heartThorns += 12; },
+  },
+  {
+    id: 'halo',
+    name: 'Halo of Light',
+    desc: '+40% light radius — Shades have nowhere to hide',
+    max: 2,
+    apply(mods) { mods.lightMul *= 1.4; },
+  },
+  {
+    id: 'nova',
+    name: 'Heartpulse Nova',
+    desc: 'The Heart bursts fire at everything close, every few seconds',
+    max: 3,
+    apply(mods) { mods.novaLevel += 1; },
+  },
 ];
 
 export function defaultMods() {
@@ -80,6 +108,10 @@ export function defaultMods() {
     dashCooldownMul: 1,
     magnetMul: 1,
     critChance: 0,
+    heartMend: 0,
+    heartThorns: 0,
+    lightMul: 1,
+    novaLevel: 0,
   };
 }
 
