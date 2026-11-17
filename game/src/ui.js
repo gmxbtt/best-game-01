@@ -12,6 +12,8 @@ export function createUI(handlers) {
     hpText: $('hp-text'),
     heartFill: $('heart-fill'),
     heartText: $('heart-text'),
+    flameFill: $('flame-fill'),
+    flameText: $('flame-text'),
     score: $('score'),
     wave: $('wave'),
     nightName: $('night-name'),
@@ -34,10 +36,14 @@ export function createUI(handlers) {
     finalScore: $('final-score'),
     finalWave: $('final-wave'),
     finalKills: $('final-kills'),
+    finalFed: $('final-fed'),
+    finalCombo: $('final-combo'),
     victory: $('victory-screen'),
     victoryScore: $('victory-score'),
     victoryKills: $('victory-kills'),
     victoryHeart: $('victory-heart'),
+    victoryFed: $('victory-fed'),
+    victoryCombo: $('victory-combo'),
     toast: $('toast'),
   };
 
@@ -101,10 +107,21 @@ export function createUI(handlers) {
       els.heartFill.classList.toggle('low', heartFrac < 0.35);
       els.heartText.textContent = `♥ ${Math.ceil(heart.hp)} / ${heart.maxHp}`;
     }
+    // The Heart's flame: the meter the whole run is about. It drains all
+    // night and only embers fed to the Heart refill it.
+    if (heart) {
+      const fuelFrac = Math.max(0, heart.fuel / heart.maxFuel);
+      els.flameFill.style.width = `${fuelFrac * 100}%`;
+      els.flameFill.classList.toggle('low', fuelFrac < 0.3);
+      els.flameText.textContent = fuelFrac <= 0
+        ? '🔥 FLAME OUT — FEED IT NOW!'
+        : `🔥 FLAME ${Math.ceil(heart.fuel)} / ${heart.maxFuel}`;
+    }
     els.score.textContent = String(game.score);
     els.wave.textContent = `NIGHT ${game.wave} / 10`;
     els.nightName.textContent = game.nightName ? `— ${game.nightName.toUpperCase()} —` : '';
-    els.embers.textContent = `⬢ ${game.embers}`;
+    const carryCap = 12 + (game.player.mods.carryBonus ?? 0);
+    els.embers.textContent = `⬢ ${game.carried} / ${carryCap} CARRIED`;
     const mult = game.comboMultiplier();
     els.combo.textContent = game.combo > 1 ? `COMBO x${mult.toFixed(1)} (${game.combo})` : '';
     els.combo.classList.toggle('hot', mult >= 2);
@@ -129,8 +146,12 @@ export function createUI(handlers) {
     choices.forEach((choice, index) => {
       const card = document.createElement('button');
       card.className = 'upgrade-card';
+      const tag = choice.tag === 'heart'
+        ? '<span class="up-tag">♥ HEART UPGRADE</span>'
+        : '';
       card.innerHTML = `<span class="up-key">${index + 1}</span>
         <span class="up-name">${choice.name}</span>
+        ${tag}
         <span class="up-desc">${choice.desc}</span>`;
       card.addEventListener('click', () => onPick(choice));
       els.upgradeCards.appendChild(card);
@@ -153,6 +174,8 @@ export function createUI(handlers) {
     els.finalScore.textContent = String(game.score);
     els.finalWave.textContent = String(game.wave);
     els.finalKills.textContent = String(game.kills);
+    els.finalFed.textContent = String(game.fed);
+    els.finalCombo.textContent = `x${game.bestCombo}`;
   }
 
   function showVictory(game) {
@@ -160,6 +183,8 @@ export function createUI(handlers) {
     els.victoryScore.textContent = String(game.score);
     els.victoryKills.textContent = String(game.kills);
     els.victoryHeart.textContent = game.heart ? `${Math.ceil(game.heart.hp)} / ${game.heart.maxHp}` : '—';
+    els.victoryFed.textContent = String(game.fed);
+    els.victoryCombo.textContent = `x${game.bestCombo}`;
   }
 
   // Buttons.

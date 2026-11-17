@@ -94,6 +94,25 @@ export class AudioEngine {
     this._tone({ type: 'sine', freq: 990, dur: 0.1, vol: 0.18, when: 0.06 });
   }
 
+  // An ember poured into the Heart: a warm rising chime, higher each time
+  // three in a row land, so a good feed run sings.
+  feed() {
+    this._tone({ type: 'sine', freq: 784, dur: 0.09, vol: 0.2 });
+    this._tone({ type: 'sine', freq: 1175, dur: 0.14, vol: 0.2, when: 0.07 });
+  }
+
+  // The flame is out: a low, urgent two-beat alarm.
+  lowFuel() {
+    this._tone({ type: 'sawtooth', freq: 110, freqEnd: 70, dur: 0.3, vol: 0.28 });
+    this._tone({ type: 'sawtooth', freq: 110, freqEnd: 70, dur: 0.3, vol: 0.28, when: 0.35 });
+  }
+
+  // A Longshot's bolt: a sharp cold zap, distinct from the Spitter's spit.
+  sniperShot() {
+    this._tone({ type: 'square', freq: 1400, freqEnd: 300, dur: 0.12, vol: 0.14 });
+    this._noise({ dur: 0.08, vol: 0.08, freq: 4000 });
+  }
+
   heart() {
     this._tone({ type: 'sine', freq: 523, dur: 0.12, vol: 0.22 });
     this._tone({ type: 'sine', freq: 784, dur: 0.18, vol: 0.22, when: 0.1 });

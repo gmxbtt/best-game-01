@@ -172,17 +172,32 @@ export function createEnemy(game, type, x, y) {
     angle: 0,
     wobble: game.rng.range(0, Math.PI * 2),
     // Who this enemy hunts: Kindlers run for the Heart, the rest hunt the ship.
-    target: type === 'kindler' ? 'heart' : 'player',
+    target: type === 'kindler' || type === 'rammer' ? 'heart' : 'player',
     heartHitT: 0, // cooldown between bites at the Heart
     shieldT: 0, // the Warden's shield: no damage while this runs
     shieldTimer: 3, // the Warden's own shield pulse timer
     concealed: false, // Shades hide in the dark, outside the Heart's light
+    elite: false, // late-night elites: tougher, faster, worth more embers
+    // Sniper-only state: how long until its next bolt at the Heart.
+    snipeTimer: game.rng.range(2.0, 3.2),
+    // Rammer-only state: how long it has been winding up its charge.
+    chargeUp: 0,
     // Boss-only state.
     attackTimer: 2.5,
     attackKind: 0,
     charging: 0,
     chargeTarget: 'player', // the boss's lunge aims at the player — or the Heart
   };
+  // Elites: from night 9 on, a few ordinary enemies come back burning
+  // gold — tougher, faster, and worth twice the score and extra embers.
+  if (wave >= 9 && type !== 'boss' && type !== 'warden' && game.rng.chance(0.18)) {
+    enemy.elite = true;
+    enemy.hp *= 1.6;
+    enemy.maxHp *= 1.6;
+    enemy.speed *= 1.15;
+    enemy.score *= 2;
+    enemy.embers += 2;
+  }
   return enemy;
 }
 
@@ -244,6 +259,7 @@ export function updateEnemy(game, e, dt) {
           r: CONFIG.ENEMY_BULLET_RADIUS,
           damage: e.damage,
           life: 4,
+          heartMul: 0.5, // stray spit only grazes the Heart; bites do the real harm
         });
         game.audio.enemyShoot();
       }
@@ -285,6 +301,60 @@ export function updateEnemy(game, e, dt) {
         }
         game.audio.shield();
         game.__addText(e.x, e.y - e.r - 10, 'SHIELDED', '#c9b8ff', 15);
+      }
+      break;
+    }
+    case 'sniper': {
+      // A Longshot never comes close: it holds 380–460 from the Heart and
+      // fires a piercing bolt at it. Kill it, or body-block its bolts —
+      // the Heart cannot dodge, so the player has to.
+      const dHeart = Math.hypot(game.heart.x - e.x, game.heart.y - e.y);
+      const hx = (game.heart.x - e.x) / (dHeart || 1);
+      const hy = (game.heart.y - e.y) / (dHeart || 1);
+      const radial = dHeart > 460 ? 1 : dHeart < 380 ? -1 : 0;
+      const strafe = Math.sin(e.wobble * 0.9) * 0.9;
+      e.vx = (hx * radial + -hy * strafe) * e.speed;
+      e.vy = (hy * radial + hx * strafe) * e.speed;
+      e.snipeTimer -= dt;
+      if (e.snipeTimer <= 0 && dHeart < 560) {
+        e.snipeTimer = game.rng.range(2.6, 3.4);
+        game.enemyBullets.push({
+          x: e.x,
+          y: e.y,
+          vx: hx * 300,
+          vy: hy * 300,
+          r: 6,
+          damage: e.damage,
+          life: 4,
+          color: '#7df9ff',
+        });
+        game.audio.sniperShot();
+        game.__addText(e.x, e.y - e.r - 8, 'SNIPED!', '#7df9ff', 12);
+      }
+      break;
+    }
+    case 'rammer': {
+      // A Crasher runs straight at the Heart, winding up faster the
+      // closer it gets — a lit fuse the player can see coming. It bursts
+      // on contact (heart.js), so the answer is to kill it mid-charge.
+      const dHeart = Math.hypot(game.heart.x - e.x, game.heart.y - e.y);
+      e.chargeUp = Math.min(1, e.chargeUp + dt * 0.8);
+      const charge = dHeart < 300 ? 1 + e.chargeUp * 0.9 : 1;
+      const weave = Math.sin(e.wobble * 1.1) * 0.12;
+      e.vx = (nx + -ny * weave) * e.speed * charge;
+      e.vy = (ny + nx * weave) * e.speed * charge;
+      if (game.rng.chance(dt * 6)) {
+        addParticle(game, {
+          x: e.x + game.rng.range(-e.r, e.r),
+          y: e.y + game.rng.range(-e.r, e.r),
+          vx: 0,
+          vy: -40,
+          life: 0.3,
+          maxLife: 0.3,
+          size: 2.5,
+          color: '#ff8c42',
+          drag: 0,
+        });
       }
       break;
     }
@@ -347,6 +417,7 @@ function updateBoss(game, e, dt, nx, ny, dist) {
           r: CONFIG.ENEMY_BULLET_RADIUS,
           damage: e.damage,
           life: 5,
+          heartMul: 0.5, // stray fire only grazes the Heart
         });
       }
       game.audio.enemyShoot();
@@ -364,6 +435,7 @@ function updateBoss(game, e, dt, nx, ny, dist) {
           r: CONFIG.ENEMY_BULLET_RADIUS,
           damage: e.damage,
           life: 4,
+          heartMul: 0.5, // stray fire only grazes the Heart
         });
       }
       game.audio.enemyShoot();
@@ -394,6 +466,7 @@ function updateBoss(game, e, dt, nx, ny, dist) {
             r: CONFIG.ENEMY_BULLET_RADIUS,
             damage: e.damage,
             life: 5,
+            heartMul: 0.5, // stray fire only grazes the Heart
           });
         }
         game.audio.enemyShoot();

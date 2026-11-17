@@ -21,20 +21,26 @@ export function createHeart() {
     r: CONFIG.HEART_RADIUS,
     hp: CONFIG.HEART_MAX_HP,
     maxHp: CONFIG.HEART_MAX_HP,
+    fuel: CONFIG.FLAME.MAX_FUEL, // the flame: drains all night, fed by embers
+    maxFuel: CONFIG.FLAME.MAX_FUEL,
+    burnoutAcc: 0, // accumulated burnout damage while the flame is out
     pulse: 0, // 0..1, the heartbeat phase (drives the glow and the rings)
     novaTimer: 0, // counts down to the next Heartpulse nova, when upgraded
     novaFlash: 0, // 0..1, the nova's expanding ring, for the renderer
     heartbeatTimer: 0, // slow thump timer when the Heart runs low
     lowWarned: false, // the "heart is burning low" warning, once per dip
+    fuelWarned: false, // the "flame is dying" warning, once per dip
   };
 }
 
 // How far the Heart's light reaches right now. It shrinks as the Heart
-// bleeds (the night closes in) and grows with the Halo of Light upgrade.
+// bleeds (the night closes in), shrinks again as its fuel runs low (the
+// flame itself is dying), and grows with the Halo of Light upgrade.
 export function heartLightRadius(game) {
   const heart = game.heart;
   const healthFrac = Math.max(0.45, heart.hp / heart.maxHp);
-  return CONFIG.HEART_LIGHT_RADIUS * healthFrac * game.player.mods.lightMul;
+  const fuelFrac = 0.45 + 0.55 * Math.max(0, heart.fuel / heart.maxFuel);
+  return CONFIG.HEART_LIGHT_RADIUS * healthFrac * fuelFrac * game.player.mods.lightMul;
 }
 
 // One fixed step of Heart life: the pulse, the nova, the low heartbeat.
@@ -67,8 +73,34 @@ export function updateHeart(game, dt) {
     }
   }
 
+  // The flame burns down all night: the clock the player races. The drain
+  // only runs while a night is live, never on the title screen or between
+  // nights — dawn is a breather, not a bill.
+  if (game.state === 'playing' && game.waveActive) {
+    const drain = CONFIG.FLAME.DRAIN_BASE + CONFIG.FLAME.DRAIN_PER_NIGHT * (game.wave - 1);
+    heart.fuel = Math.max(0, heart.fuel - drain * dt);
+  }
+
+  // Burnout: no fuel left, and the Heart starts eating itself — a slow,
+  // loud bleed that only feeding can stop.
+  if (heart.fuel <= 0 && game.state === 'playing' && heart.hp > 0) {
+    heart.burnoutAcc += CONFIG.FLAME.BURNOUT_HP_PER_SEC * dt;
+    if (heart.burnoutAcc >= 1) {
+      heart.burnoutAcc -= 1;
+      hurtHeart(game, 1);
+      game.__addText(heart.x, heart.y - heart.r - 30, 'BURNING OUT!', '#ff2e4d', 15);
+    }
+    if (!heart.fuelWarned) {
+      heart.fuelWarned = true;
+      game.ui.showToast('THE FLAME IS OUT — FEED THE HEART!');
+      game.audio.lowFuel();
+    }
+  } else if (heart.fuel > CONFIG.FLAME.LOW_FUEL) {
+    heart.fuelWarned = false;
+  }
+
   // A slow heartbeat when the Heart runs low: dread you can hear.
-  const low = heart.hp / heart.maxHp < 0.35;
+  const low = heart.hp / heart.maxHp < 0.35 || heart.fuel / heart.maxFuel < 0.3;
   if (low) {
     heart.heartbeatTimer -= dt;
     if (heart.heartbeatTimer <= 0) {
@@ -112,6 +144,15 @@ export function damageHeart(game, enemy) {
   if (enemy.heartHitT > 0) return false;
   enemy.heartHitT = CONFIG.HEART_TOUCH_COOLDOWN;
 
+  // A Crasher does not bite: it bursts against the Heart, spending its
+  // whole body in one blast — and dies doing it.
+  if (enemy.type === 'rammer') {
+    enemy.hp = 0;
+    game.audio.explosion(true);
+    hurtHeart(game, enemy.damage);
+    return true;
+  }
+
   // Heart Thorns: the Heart bites back.
   const thorns = game.player.mods.heartThorns;
   if (thorns > 0) {
@@ -130,8 +171,12 @@ export function damageHeart(game, enemy) {
   return true;
 }
 
-// Between nights the Heart knits itself back together a little.
+// Between nights the Heart knits itself back together a little — and the
+// dawn rekindles its flame a little too, so no run starts a night already
+// burning out.
 export function mendHeartBetweenNights(game) {
   const heart = game.heart;
   heart.hp = Math.min(heart.maxHp, heart.hp + CONFIG.HEART_NIGHT_HEAL);
+  heart.fuel = Math.min(heart.maxFuel, heart.fuel + CONFIG.FLAME.NIGHT_REFUEL);
+  heart.burnoutAcc = 0;
 }

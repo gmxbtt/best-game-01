@@ -94,6 +94,25 @@ html, body {
 @keyframes heartblink { from { filter: brightness(1); } to { filter: brightness(1.7); } }
 #heart-text { margin-top: 4px; font-size: 13px; color: #ffb3c1; }
 
+#flame-label { margin-top: 10px; font-size: 12px; letter-spacing: 2px; color: #ffcf5c; font-weight: bold; }
+#flame-bar {
+  margin-top: 4px;
+  width: 180px;
+  height: 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255, 207, 92, 0.6);
+  border-radius: 5px;
+  overflow: hidden;
+}
+#flame-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #ff6b00, #ffcf5c);
+  transition: width 0.15s ease-out;
+}
+#flame-fill.low { background: linear-gradient(90deg, #ff0033, #ff3b30); animation: heartblink 0.7s infinite alternate; }
+#flame-text { margin-top: 4px; font-size: 13px; color: #ffcf5c; }
+
 #hud-center {
   position: absolute;
   top: 10px;
@@ -188,6 +207,14 @@ html, body {
 }
 .game-title span { color: #ff4d6d; }
 .tagline { margin-top: 12px; font-size: 19px; color: #cfc6f5; }
+.objective {
+  margin-top: 14px;
+  font-size: 20px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  color: #ffcf5c;
+  text-shadow: 0 0 16px rgba(255, 207, 92, 0.65);
+}
 
 .howto {
   margin: 26px 0;
@@ -243,8 +270,11 @@ html, body {
 
 .stats {
   display: flex;
-  gap: 48px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 32px 48px;
   margin-top: 24px;
+  max-width: 760px;
 }
 .stats div { display: flex; flex-direction: column; gap: 6px; }
 .stats span { font-size: 13px; letter-spacing: 2px; color: #9d8fd0; }
@@ -286,6 +316,15 @@ html, body {
   padding: 2px 8px;
 }
 .up-name { font-size: 20px; font-weight: bold; color: #ffb347; }
+.up-tag {
+  font-size: 12px;
+  font-weight: bold;
+  letter-spacing: 2px;
+  color: #ff8fa3;
+  border: 1px solid rgba(255, 77, 109, 0.7);
+  border-radius: 5px;
+  padding: 2px 8px;
+}
 .up-desc { font-size: 15px; color: #e8e2ff; line-height: 1.4; }
 
 /* ---- Night banner ---- */

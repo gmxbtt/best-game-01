@@ -24,6 +24,8 @@ import { startWave, updateSpawning, waveIsCleared } from './waves.js';
 import { defaultMods, rollUpgrades } from './upgrades.js';
 import { drawGame } from './render.js';
 import { createUI } from './ui.js';
+import { createJuice, updateJuice, simTimeScale, killBurst, damageNumber } from './juice.js';
+import { collectEmber, updateFeeding } from './embers.js';
 import { applyShot } from './shots.js';
 import {
   createHeart,
@@ -73,8 +75,13 @@ function createGame(canvas, ctx) {
     score: 0,
     combo: 0,
     comboTimer: 0,
+    bestCombo: 0,
     embers: 0,
+    carried: 0, // embers aboard the ship, waiting to be fed to the Heart
+    fed: 0, // embers fed to the Heart this run
+    feedAcc: 0, // fractional embers poured into the Heart
     kills: 0,
+    juice: createJuice(),
     best: readBest(),
     player: null,
     heart: createHeart(), // the Ember Heart burns from the first frame
@@ -137,8 +144,13 @@ function startRun(game) {
   game.score = 0;
   game.combo = 0;
   game.comboTimer = 0;
+  game.bestCombo = 0;
   game.embers = 0;
+  game.carried = 0;
+  game.fed = 0;
+  game.feedAcc = 0;
   game.kills = 0;
+  game.juice = createJuice();
   game.boss = null;
   game.takenCounts = {};
   game.pendingUpgrades = [];
@@ -194,8 +206,9 @@ function killEnemy(game, enemy, index) {
   game.kills += 1;
   game.combo += 1;
   game.comboTimer = CONFIG.COMBO_WINDOW;
+  game.bestCombo = Math.max(game.bestCombo, game.combo);
   addScore(game, enemy.score, enemy.x, enemy.y - enemy.r - 6);
-  spawnExplosion(game, enemy.x, enemy.y, enemy.glow, enemy.type === 'boss');
+  killBurst(game, enemy);
   game.audio.explosion(enemy.type === 'boss' || enemy.type === 'splitter');
 
   // Drops: embers, and sometimes a heart.
@@ -244,7 +257,7 @@ function handleCollisions(game) {
       const dmg = b.damage * (crit ? 2 : 1);
       e.hp -= dmg;
       e.flash = 0.12;
-      addText(game, e.x + game.rng.range(-8, 8), e.y - e.r - 4, String(Math.round(dmg)), crit ? '#ffd166' : '#ffffff', crit ? 19 : 14);
+      damageNumber(game, e.x, e.y - e.r - 4, dmg, crit);
       if (e.hp <= 0) killEnemy(game, e, ei);
       if (b.pierce > 0) {
         b.pierce -= 1;
@@ -285,13 +298,15 @@ function handleCollisions(game) {
       continue;
     }
     // Enemy fire that crosses the Heart wounds it too: never hide behind it.
+    // Stray fire only grazes the Heart (heartMul 0.5); a Longshot's aimed
+    // bolt hits it in full — the Heart is armoured, not invulnerable.
     const heart = game.heart;
     const hx = heart.x - b.x;
     const hy = heart.y - b.y;
     const hr = heart.r + b.r;
     if (hx * hx + hy * hy <= hr * hr) {
       game.enemyBullets.splice(i, 1);
-      hurtHeart(game, b.damage);
+      hurtHeart(game, Math.max(1, Math.round(b.damage * (b.heartMul ?? 1))));
       if (game.state !== 'playing') return;
     }
   }
@@ -307,6 +322,9 @@ function handleCollisions(game) {
     const rr = heart.r + e.r;
     if (dx * dx + dy * dy > rr * rr) continue;
     damageHeart(game, e);
+    // A Crasher that bursts — or anything the Heart's thorns finish off —
+    // dies on the spot and pays out like any other kill.
+    if (e.hp <= 0) killEnemy(game, e, ei);
     if (game.state !== 'playing') return;
   }
 
@@ -319,9 +337,13 @@ function handleCollisions(game) {
     if (dx * dx + dy * dy > rr * rr) continue;
     game.pickups.splice(i, 1);
     if (pk.kind === 'ember') {
-      game.embers += 1;
-      addScore(game, CONFIG.EMBER_SCORE, pk.x, pk.y - 10);
-      game.audio.pickup();
+      // Embers ride in the satchel: fly them home to the Heart to feed it.
+      const stowed = collectEmber(game, pk);
+      if (stowed) {
+        addScore(game, CONFIG.EMBER_SCORE, pk.x, pk.y - 10);
+      } else {
+        addText(game, pk.x, pk.y - 10, `+${CONFIG.EMBER_SCORE} (satchel full)`, '#ff9f1c', 13);
+      }
     } else {
       p.hp = Math.min(p.maxHp, p.hp + CONFIG.HEART_HEAL);
       addText(game, pk.x, pk.y - 10, `+${CONFIG.HEART_HEAL} HP`, '#ff4d6d', 16);
@@ -344,6 +366,7 @@ function stepGame(game, dt) {
 
   updatePlayer(game, dt);
   updateHeart(game, dt);
+  updateFeeding(game, dt);
   updateSpawning(game, dt);
   for (const e of game.enemies) updateEnemy(game, e, dt);
   updateBullets(game, dt);
@@ -362,6 +385,9 @@ function stepGame(game, dt) {
     game.waveActive = false;
     game.score += CONFIG.WAVE_CLEAR_BONUS;
     mendHeartBetweenNights(game);
+    // Dawn patches the ship up too: surviving a night is worth 25 HP, so
+    // a run that defends well does not slowly bleed out across ten nights.
+    game.player.hp = Math.min(game.player.maxHp, game.player.hp + 25);
     game.audio.waveClear();
     game.ui.showToast(`NIGHT ${game.wave} CLEAR!  +${CONFIG.WAVE_CLEAR_BONUS}`);
     if (game.wave >= CONFIG.TOTAL_WAVES) {
@@ -533,8 +559,10 @@ function main() {
     }
 
     // Fixed-step simulation, only while playing and not frozen for a screenshot.
+    // Juice scales the sim: slow-mo after a boss kill, hit-stop on a big hit.
     if (game.state === 'playing' && !game.frozen) {
-      acc += dt;
+      updateJuice(game, dt);
+      acc += dt * simTimeScale(game);
       let guard = 0;
       while (acc >= CONFIG.STEP && guard < 5) {
         stepGame(game, CONFIG.STEP);
@@ -548,6 +576,7 @@ function main() {
       if (guard >= 5) acc = 0;
     } else {
       acc = 0;
+      updateJuice(game, dt);
       game.shake.t = Math.max(0, game.shake.t - dt);
       game.hurtFlash = Math.max(0, game.hurtFlash - dt * 2.2);
     }

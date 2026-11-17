@@ -20,6 +20,9 @@
       <div id="heart-label">♥ EMBER HEART</div>
       <div id="heart-bar"><div id="heart-fill"></div></div>
       <div id="heart-text"></div>
+      <div id="flame-label">🔥 HEART FLAME — FEED IT EMBERS</div>
+      <div id="flame-bar"><div id="flame-fill"></div></div>
+      <div id="flame-text"></div>
     </div>
     <div id="hud-center">
       <div id="score">0</div>
@@ -47,11 +50,12 @@
   <div id="title-screen" class="overlay">
     <h1 class="game-title">EMBER<span>FALL</span></h1>
     <p class="tagline">Hold the last ember. Ten nights. One heart of fire.</p>
+    <p class="objective">🔥 THE HEART BURNS OUT — feed it with the embers of what you kill, or it dies.</p>
     <div class="howto">
       <p><b>WASD / Arrows</b> — fly &nbsp;·&nbsp; <b>Mouse</b> — aim &nbsp;·&nbsp; <b>Hold Click / Space</b> — fire</p>
       <p><b>Shift</b> — dash (brief invulnerability) &nbsp;·&nbsp; <b>P / Esc</b> — pause &nbsp;·&nbsp; <b>M</b> — mute</p>
-      <p>The <b>Ember Heart</b> burns at the arena's core. Kindlers and the Tyrant hunt it — <b>if it falls, the night wins</b>, even if your ship still flies.</p>
-      <p>Slay enemies to build your combo, grab their embers, and pick an upgrade after every night. On dark nights only the Heart's light can be trusted.</p>
+      <p>Slain enemies drop <b>embers</b>. Scoop them up, then fly back to the <b>Ember Heart</b> — standing close pours them in, healing the Heart and feeding its flame. A Heart with no flame burns out and dies.</p>
+      <p>Kindlers, Crashers and Longshots hunt the Heart — <b>if it falls, the night wins</b>, even if your ship still flies. Build your combo, pick an upgrade after every night. On dark nights only the Heart's light can be trusted.</p>
       <p>Survive all 10 nights — the Ember Tyrant waits at nights 5 and 10.</p>
     </div>
     <button id="btn-start" class="big-btn" type="button">▶ &nbsp;START — click or press Enter</button>
@@ -61,7 +65,7 @@
   <!-- Upgrade choice -->
   <div id="upgrade-screen" class="overlay hidden">
     <h2 class="screen-title">NIGHT CLEARED — CHOOSE AN UPGRADE</h2>
-    <p class="screen-sub">Pick one. Press 1, 2 or 3, or click a card.</p>
+    <p class="screen-sub">Pick one. Press 1, 2 or 3, or click a card. ♥ marks an upgrade for the Heart.</p>
     <div id="upgrade-cards"></div>
   </div>
 
@@ -81,6 +85,8 @@
       <div><span>SCORE</span><b id="final-score">0</b></div>
       <div><span>NIGHT REACHED</span><b id="final-wave">1</b></div>
       <div><span>ENEMIES SLAIN</span><b id="final-kills">0</b></div>
+      <div><span>EMBERS FED</span><b id="final-fed">0</b></div>
+      <div><span>BEST COMBO</span><b id="final-combo">x0</b></div>
     </div>
     <button id="btn-restart-over" class="big-btn" type="button">↻ &nbsp;PLAY AGAIN (Enter)</button>
     <button id="btn-title-over" class="ghost-btn" type="button">Title screen</button>
@@ -94,6 +100,8 @@
       <div><span>FINAL SCORE</span><b id="victory-score">0</b></div>
       <div><span>ENEMIES SLAIN</span><b id="victory-kills">0</b></div>
       <div><span>HEART REMAINING</span><b id="victory-heart">0</b></div>
+      <div><span>EMBERS FED</span><b id="victory-fed">0</b></div>
+      <div><span>BEST COMBO</span><b id="victory-combo">x0</b></div>
     </div>
     <button id="btn-restart-victory" class="big-btn" type="button">↻ &nbsp;PLAY AGAIN (Enter)</button>
     <button id="btn-title-victory" class="ghost-btn" type="button">Title screen</button>

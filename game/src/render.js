@@ -66,6 +66,28 @@ export function drawGame(game) {
     ctx.fillStyle = `rgba(255, 40, 60, ${game.hurtFlash * 0.22})`;
     ctx.fillRect(0, 0, WIDTH, HEIGHT);
   }
+
+  // Boss-death flash: a brief wash of light as the Tyrant goes down.
+  if (game.juice && game.juice.flashT > 0) {
+    ctx.fillStyle = game.juice.flashColor;
+    ctx.globalAlpha = game.juice.flashT * 0.35;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+    ctx.globalAlpha = 1;
+  }
+
+  // Dread vignette: red closes in from the edges while the Heart's flame
+  // or HP runs low — the screen itself says the run is in danger.
+  if (game.juice && game.juice.vignette > 0.02) {
+    const v = game.juice.vignette;
+    const g = ctx.createRadialGradient(
+      WIDTH / 2, HEIGHT / 2, Math.min(WIDTH, HEIGHT) * 0.32,
+      WIDTH / 2, HEIGHT / 2, Math.max(WIDTH, HEIGHT) * 0.72,
+    );
+    g.addColorStop(0, 'rgba(255, 0, 40, 0)');
+    g.addColorStop(1, `rgba(255, 0, 40, ${0.5 * v})`);
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  }
 }
 
 function drawBackground(game, ctx) {
@@ -137,13 +159,18 @@ function drawHeart(game, ctx) {
   if (!heart) return;
   const { x, y, r } = heart;
   const frac = Math.max(0, heart.hp / heart.maxHp);
-  const beat = 1 + Math.sin(heart.pulse * Math.PI * 2) * 0.07;
+  // The flame is the Heart's life: as fuel runs low the Heart visibly
+  // dims, shrinks and burns red — the player reads the danger at a glance,
+  // even without the HUD.
+  const fuelFrac = Math.max(0, heart.fuel / heart.maxFuel);
+  const burn = Math.min(frac, 0.35 + 0.65 * fuelFrac);
+  const beat = (1 + Math.sin(heart.pulse * Math.PI * 2) * 0.07) * (0.82 + 0.18 * fuelFrac);
   const lightR = heartLightRadius(game);
 
-  // Pool of light on the arena floor.
+  // Pool of light on the arena floor — dimmer as the flame dies.
   const pool = ctx.createRadialGradient(x, y, 0, x, y, lightR);
-  pool.addColorStop(0, 'rgba(255, 159, 28, 0.20)');
-  pool.addColorStop(0.55, 'rgba(255, 110, 40, 0.08)');
+  pool.addColorStop(0, `rgba(255, 159, 28, ${0.20 * (0.3 + 0.7 * fuelFrac)})`);
+  pool.addColorStop(0.55, `rgba(255, 110, 40, ${0.08 * (0.3 + 0.7 * fuelFrac)})`);
   pool.addColorStop(1, 'rgba(255, 110, 40, 0)');
   ctx.fillStyle = pool;
   ctx.fillRect(x - lightR, y - lightR, lightR * 2, lightR * 2);
@@ -163,13 +190,13 @@ function drawHeart(game, ctx) {
   }
   ctx.restore();
 
-  // The heart itself, beating.
+  // The heart itself, beating — red and guttering when the flame is low.
   ctx.save();
   ctx.translate(x, y);
   ctx.scale(beat, beat);
-  ctx.shadowColor = frac < 0.35 ? '#ff0033' : '#ff9f1c';
-  ctx.shadowBlur = 30;
-  ctx.fillStyle = frac < 0.35 ? '#ff2e4d' : '#ff4d6d';
+  ctx.shadowColor = burn < 0.35 ? '#ff0033' : '#ff9f1c';
+  ctx.shadowBlur = 30 * (0.4 + 0.6 * fuelFrac);
+  ctx.fillStyle = burn < 0.35 ? '#ff2e4d' : '#ff4d6d';
   drawHeartShape(ctx, r);
   ctx.shadowBlur = 0;
   ctx.fillStyle = '#ffd6de';
@@ -275,6 +302,23 @@ function drawPlayer(game, ctx) {
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r + 8, -Math.PI / 2, -Math.PI / 2 + frac * Math.PI * 2);
     ctx.stroke();
+  }
+
+  // Carried embers orbit the ship: the flame the player is bringing home,
+  // visible at a glance.
+  const carried = Math.min(game.carried || 0, 8);
+  if (carried > 0) {
+    ctx.save();
+    ctx.shadowColor = '#ff9f1c';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#ffcf5c';
+    for (let i = 0; i < carried; i += 1) {
+      const a = game.time * 2.2 + (i / carried) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.arc(p.x + Math.cos(a) * (p.r + 13), p.y + Math.sin(a) * (p.r + 13), 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 }
 
@@ -394,6 +438,48 @@ function drawEnemies(game, ctx) {
         ctx.fill();
         break;
       }
+      case 'sniper': {
+        // A Longshot: a cold cyan diamond with a long sight-line toward the
+        // Heart, so the player sees what it is aiming at.
+        ctx.rotate(Math.atan2(game.heart.y - e.y, game.heart.x - e.x));
+        ctx.beginPath();
+        ctx.moveTo(e.r + 8, 0);
+        ctx.lineTo(0, -e.r * 0.7);
+        ctx.lineTo(-e.r, 0);
+        ctx.lineTo(0, e.r * 0.7);
+        ctx.closePath();
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(125, 249, 255, 0.55)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(e.r + 8, 0);
+        ctx.lineTo(e.r + 42, 0);
+        ctx.stroke();
+        ctx.fillStyle = '#e6fbff';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case 'rammer': {
+        // A Crasher: a burning arrowhead pointed at the Heart, sparking
+        // harder as its charge winds up.
+        ctx.rotate(Math.atan2(game.heart.y - e.y, game.heart.x - e.x));
+        const flick = 1 + Math.sin(game.time * 18 + e.wobble) * 0.15;
+        ctx.scale(flick, 1);
+        ctx.beginPath();
+        ctx.moveTo(e.r + 10, 0);
+        ctx.lineTo(-e.r * 0.7, -e.r * 0.85);
+        ctx.lineTo(-e.r * 0.3, 0);
+        ctx.lineTo(-e.r * 0.7, e.r * 0.85);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = '#fff3c4';
+        ctx.beginPath();
+        ctx.arc(e.r * 0.25, 0, e.r * 0.32, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
       case 'boss': {
         // Boss: big spiked ring, rotating outer spikes, pulsing core.
         ctx.rotate(game.time * 0.6);
@@ -424,6 +510,18 @@ function drawEnemies(game, ctx) {
         ctx.beginPath();
         ctx.arc(0, 0, e.r, 0, Math.PI * 2);
         ctx.fill();
+    }
+
+    // Elites burn gold: a bright ring that says "worth the risk".
+    if (e.elite) {
+      ctx.save();
+      ctx.globalAlpha = 0.75 + 0.25 * Math.sin(game.time * 6);
+      ctx.strokeStyle = '#ffd166';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, e.r + 5, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
     }
 
     // The Warden's shield: a cyan ring that says "this one cannot be hurt".
@@ -496,12 +594,12 @@ function drawBullets(game, ctx) {
   }
   ctx.restore();
 
-  // Enemy orbs: pulsing purple-red glow.
+  // Enemy orbs: pulsing purple-red glow — or cold cyan for a Longshot bolt.
   ctx.save();
   ctx.shadowColor = '#ff2e63';
   ctx.shadowBlur = 12;
   for (const b of game.enemyBullets) {
-    ctx.fillStyle = '#ff5d8f';
+    ctx.fillStyle = b.color ?? '#ff5d8f';
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
     ctx.fill();

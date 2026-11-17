@@ -68,9 +68,17 @@ export const UPGRADES = [
     apply(mods) { mods.critChance += 0.12; },
   },
   {
+    id: 'satchel',
+    name: 'Ember Satchel',
+    desc: 'Carry +10 embers, feed the Heart 50% faster',
+    max: 2,
+    apply(mods) { mods.carryBonus += 10; mods.feedMul *= 1.5; },
+  },
+  {
     id: 'mendheart',
     name: 'Mend the Heart',
     desc: 'Heal the Heart 50 and raise its max by 25',
+    tag: 'heart',
     max: 3,
     apply(mods) { mods.heartMend += 1; },
   },
@@ -78,6 +86,7 @@ export const UPGRADES = [
     id: 'thorns',
     name: 'Heart Thorns',
     desc: 'The Heart wounds every enemy that bites it (+12)',
+    tag: 'heart',
     max: 3,
     apply(mods) { mods.heartThorns += 12; },
   },
@@ -85,6 +94,7 @@ export const UPGRADES = [
     id: 'halo',
     name: 'Halo of Light',
     desc: '+40% light radius — Shades have nowhere to hide',
+    tag: 'heart',
     max: 2,
     apply(mods) { mods.lightMul *= 1.4; },
   },
@@ -92,6 +102,7 @@ export const UPGRADES = [
     id: 'nova',
     name: 'Heartpulse Nova',
     desc: 'The Heart bursts fire at everything close, every few seconds',
+    tag: 'heart',
     max: 3,
     apply(mods) { mods.novaLevel += 1; },
   },
@@ -112,6 +123,8 @@ export function defaultMods() {
     heartThorns: 0,
     lightMul: 1,
     novaLevel: 0,
+    carryBonus: 0,
+    feedMul: 1,
   };
 }
 

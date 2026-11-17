@@ -61,21 +61,26 @@ export function applyShot(game, shot) {
     game.score = 1230;
     game.kills = 24;
     game.embers = 31;
+    game.carried = 7; // embers aboard, on the way home to the Heart
+    game.fed = 18;
     game.combo = 7;
     game.comboTimer = CONFIG.COMBO_WINDOW;
     game.heart.hp = 150;
+    game.heart.fuel = 55; // mid-flame: the meter reads half, the Heart still bright
     game.shotSim = true;
     // The ship holds below the Heart, so the shot shows both at once.
     game.player.x = 640;
     game.player.y = 520;
     // A full arena, placed by hand: Kindlers converging on the Heart, a
-    // Spitter holding range, Drifters and Darts closing on the ship.
+    // Spitter holding range, Drifters and Darts closing on the ship — and
+    // the new Longshot sniping from afar, a Crasher winding up its charge.
     const placed = [
       ['kindler', 640, 120], ['kindler', 180, 360], ['kindler', 1100, 360],
       ['drifter', 420, 200], ['drifter', 860, 520], ['drifter', 240, 520],
       ['dart', 950, 180], ['dart', 320, 480], ['dart', 1050, 500],
       ['spitter', 180, 180], ['spitter', 1080, 200],
       ['splitter', 700, 560], ['splitter', 480, 520],
+      ['sniper', 220, 120], ['rammer', 900, 620],
     ];
     for (const [type, x, y] of placed) {
       const e = createEnemy(game, type, x, y);
@@ -88,6 +93,14 @@ export function applyShot(game, shot) {
     }
     simulateFight(game, 300);
     game.shotSim = false;
+    // Clean the stage for the photo: the sim bloodied the Heart and left
+    // floating score text everywhere — reset both to a readable mid-fight.
+    game.texts = [];
+    game.heart.hp = 118;
+    game.heart.fuel = 55;
+    game.carried = 7;
+    game.ui.hideToast();
+    game.ui.hideNightBanner();
     game.ui.updateHUD(game);
     return;
   }
@@ -103,9 +116,12 @@ export function applyShot(game, shot) {
     game.score = 3420;
     game.kills = 58;
     game.embers = 74;
+    game.carried = 5;
+    game.fed = 41;
     game.combo = 5;
     game.comboTimer = CONFIG.COMBO_WINDOW;
     game.heart.hp = 150;
+    game.heart.fuel = 62;
     // The ship holds below the Heart, so the shot shows both fights at once.
     game.player.x = 640;
     game.player.y = 520;
@@ -132,6 +148,14 @@ export function applyShot(game, shot) {
     game.shotSim = true;
     simulateFight(game, 200);
     game.shotSim = false;
+    // Clean the stage: the sim bloodied the Heart and dragged the Tyrant
+    // down onto it — put both back where the photo wants them.
+    game.texts = [];
+    game.heart.hp = 110;
+    game.heart.fuel = 62;
+    game.carried = 5;
+    boss.x = CONFIG.WIDTH / 2;
+    boss.y = 190;
     game.ui.updateHUD(game);
     return;
   }
@@ -148,7 +172,11 @@ export function applyShot(game, shot) {
     game.score = 9840;
     game.kills = 187;
     game.embers = 96;
+    game.carried = 0;
+    game.fed = 96;
+    game.bestCombo = 14;
     game.heart.hp = 62;
+    game.heart.fuel = 48;
     // The Tyrant's last explosion, still blooming, for a lived-in backdrop.
     spawnExplosion(game, CONFIG.WIDTH / 2 + 180, 200, '#ff6b00', true);
     for (const [x, y] of [[300, 220], [900, 160], [640, 520]]) {
