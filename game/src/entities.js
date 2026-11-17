@@ -3,6 +3,7 @@
 // them one fixed step, and the game (main.js) owns collisions and scoring.
 
 import { CONFIG } from './config.js';
+import { overchargeDamageMul, overchargeRateMul } from './forge.js';
 
 // ---- Player ---------------------------------------------------------------
 
@@ -106,7 +107,9 @@ export function updatePlayer(game, dt) {
   // Firing.
   p.fireTimer -= dt;
   if (input.firing() && p.fireTimer <= 0) {
-    p.fireTimer = 1 / (CONFIG.PLAYER_FIRE_RATE * mods.fireRateMul);
+    // Overcharge burns hotter and faster: the Forge's half-again damage and
+    // quarter-faster rate live here, read from the forge itself.
+    p.fireTimer = 1 / (CONFIG.PLAYER_FIRE_RATE * mods.fireRateMul * overchargeRateMul(game));
     firePlayerBullets(game);
   }
 }
@@ -125,7 +128,7 @@ function firePlayerBullets(game) {
       vx: Math.cos(a) * CONFIG.PLAYER_BULLET_SPEED,
       vy: Math.sin(a) * CONFIG.PLAYER_BULLET_SPEED,
       r: CONFIG.PLAYER_BULLET_RADIUS,
-      damage: CONFIG.PLAYER_BULLET_DAMAGE * mods.damageMul,
+      damage: CONFIG.PLAYER_BULLET_DAMAGE * mods.damageMul * overchargeDamageMul(game),
       pierce: mods.pierce,
       life: 1.2,
     });
@@ -171,8 +174,9 @@ export function createEnemy(game, type, x, y) {
     shootTimer: game.rng.range(1.2, 2.4),
     angle: 0,
     wobble: game.rng.range(0, Math.PI * 2),
-    // Who this enemy hunts: Kindlers run for the Heart, the rest hunt the ship.
-    target: type === 'kindler' || type === 'rammer' ? 'heart' : 'player',
+    // Who this enemy hunts: Kindlers, Crashers and Bulwarks run for the
+    // Heart, the rest hunt the ship.
+    target: type === 'kindler' || type === 'rammer' || type === 'bulwark' ? 'heart' : 'player',
     heartHitT: 0, // cooldown between bites at the Heart
     shieldT: 0, // the Warden's shield: no damage while this runs
     shieldTimer: 3, // the Warden's own shield pulse timer
@@ -302,6 +306,14 @@ export function updateEnemy(game, e, dt) {
         game.audio.shield();
         game.__addText(e.x, e.y - e.r - 10, 'SHIELDED', '#c9b8ff', 15);
       }
+      break;
+    }
+    case 'bulwark': {
+      // A walking wall, marching on the Heart: too slow to chase the ship,
+      // too tough to ignore. It does not weave or dodge — it just comes,
+      // and every bullet it eats is a bullet that did not kill a Kindler.
+      e.vx = nx * e.speed;
+      e.vy = ny * e.speed;
       break;
     }
     case 'sniper': {

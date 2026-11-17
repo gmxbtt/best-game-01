@@ -3,6 +3,8 @@
 // The game itself is drawn on canvas; the DOM carries the text-heavy chrome so it
 // stays crisp and readable in screenshots.
 
+import { canForge, FORGE_COST } from './forge.js';
+
 export function createUI(handlers) {
   const $ = (id) => document.getElementById(id);
   const els = {
@@ -22,6 +24,8 @@ export function createUI(handlers) {
     bossBar: $('boss-bar'),
     bossName: $('boss-name'),
     bossFill: $('boss-fill'),
+    forgePrompt: $('forge-prompt'),
+    overchargeBadge: $('overcharge-badge'),
     nightBanner: $('night-banner'),
     bannerTitle: $('banner-title'),
     bannerTwist: $('banner-twist'),
@@ -29,6 +33,7 @@ export function createUI(handlers) {
     bestScore: $('best-score'),
     upgrade: $('upgrade-screen'),
     upgradeCards: $('upgrade-cards'),
+    dawnReport: $('dawn-report'),
     pause: $('pause-screen'),
     gameover: $('gameover-screen'),
     gameoverTitle: $('gameover-title'),
@@ -133,6 +138,17 @@ export function createUI(handlers) {
     } else {
       els.bossBar.classList.add('hidden');
     }
+
+    // The Forge (4.0): prompt when the player can forge right now, badge
+    // while the Overcharge burns. The prompt is the choice made visible.
+    if (els.forgePrompt) {
+      const show = canForge(game);
+      els.forgePrompt.classList.toggle('hidden', !show);
+      if (show) els.forgePrompt.textContent = `F — FORGE OVERCHARGE (${FORGE_COST} ⬢)`;
+    }
+    if (els.overchargeBadge) {
+      els.overchargeBadge.classList.toggle('hidden', !game.overcharged);
+    }
   }
 
   function showTitle(best) {
@@ -140,8 +156,14 @@ export function createUI(handlers) {
     els.bestScore.textContent = best > 0 ? `BEST SCORE: ${best}` : 'No runs yet — make your first ember fall.';
   }
 
-  function showUpgrade(choices, onPick) {
+  function showUpgrade(game, choices, onPick) {
     showOnly('upgrade');
+    // The dawn report: what the night cost and what it earned, so the choice
+    // that follows is an informed one, not a blind pick.
+    if (els.dawnReport) {
+      const heart = game.heart;
+      els.dawnReport.textContent = `NIGHT ${game.wave} CLEARED — ${game.kills} slain · ${game.fed} embers fed · ${game.forges ?? 0} forged · Heart ${heart ? Math.ceil(heart.hp) : '—'}/${heart ? heart.maxHp : '—'}`;
+    }
     els.upgradeCards.innerHTML = '';
     choices.forEach((choice, index) => {
       const card = document.createElement('button');

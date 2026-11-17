@@ -61,7 +61,10 @@ export function applyShot(game, shot) {
     game.score = 1230;
     game.kills = 24;
     game.embers = 31;
-    game.carried = 7; // embers aboard, on the way home to the Heart
+    game.carried = 2; // 4.0: just forged six embers into Overcharge — the badge
+    game.forgedTonight = true; // and the gold aura say so, and two embers ride on
+    game.overcharged = true;
+    game.forges = 1;
     game.fed = 18;
     game.combo = 7;
     game.comboTimer = CONFIG.COMBO_WINDOW;
@@ -73,7 +76,8 @@ export function applyShot(game, shot) {
     game.player.y = 520;
     // A full arena, placed by hand: Kindlers converging on the Heart, a
     // Spitter holding range, Drifters and Darts closing on the ship — and
-    // the new Longshot sniping from afar, a Crasher winding up its charge.
+    // the new Longshot sniping from afar, a Crasher winding up its charge,
+    // and a 4.0 Bulwark marching on the Heart through the middle.
     const placed = [
       ['kindler', 640, 120], ['kindler', 180, 360], ['kindler', 1100, 360],
       ['drifter', 420, 200], ['drifter', 860, 520], ['drifter', 240, 520],
@@ -81,6 +85,8 @@ export function applyShot(game, shot) {
       ['spitter', 180, 180], ['spitter', 1080, 200],
       ['splitter', 700, 560], ['splitter', 480, 520],
       ['sniper', 220, 120], ['rammer', 900, 620],
+      ['bulwark', 980, 180], // staged far out: at 40 px/s it is still
+      // mid-field, marching on the Heart, when the photo is taken
     ];
     for (const [type, x, y] of placed) {
       const e = createEnemy(game, type, x, y);
@@ -95,10 +101,13 @@ export function applyShot(game, shot) {
     game.shotSim = false;
     // Clean the stage for the photo: the sim bloodied the Heart and left
     // floating score text everywhere — reset both to a readable mid-fight.
+    // The Overcharge stays: it is the 4.0 story this shot has to tell.
     game.texts = [];
     game.heart.hp = 118;
     game.heart.fuel = 55;
-    game.carried = 7;
+    game.carried = 2;
+    game.forgedTonight = true;
+    game.overcharged = true;
     game.ui.hideToast();
     game.ui.hideNightBanner();
     game.ui.updateHUD(game);

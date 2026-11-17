@@ -14,7 +14,7 @@ export const CONFIG = {
   HEART_Y: 360,
   HEART_RADIUS: 26,
   HEART_MAX_HP: 150,
-  HEART_NIGHT_HEAL: 20,
+  HEART_NIGHT_HEAL: 25,
   HEART_LIGHT_RADIUS: 235,
   HEART_TOUCH_COOLDOWN: 1.5, // seconds between one enemy's bites at the Heart
   HEART_NOVA_RADIUS: 170,
@@ -24,8 +24,8 @@ export const CONFIG = {
   // out — it starts losing HP until it is fed again.
   FLAME: {
     MAX_FUEL: 100,
-    DRAIN_BASE: 1.35, // fuel per second, night 1
-    DRAIN_PER_NIGHT: 0.12, // +fuel per second each later night
+    DRAIN_BASE: 1.15, // fuel per second, night 1 — 4.0: the flame breathes easier
+    DRAIN_PER_NIGHT: 0.10, // +fuel per second each later night
     FEED_FUEL: 6, // fuel per ember fed
     FEED_HP: 3, // Heart HP healed per ember fed — feeding is real triage
     FEED_SCORE: 15,
@@ -34,7 +34,7 @@ export const CONFIG = {
     CARRY_CAP: 12, // embers the satchel holds (upgrades raise it)
     BURNOUT_HP_PER_SEC: 3, // Heart HP lost per second with no fuel
     LOW_FUEL: 30, // below this the flame is "low": warnings, dimming
-    NIGHT_REFUEL: 25, // dawn rekindles the Heart a little each night
+    NIGHT_REFUEL: 30, // dawn rekindles the Heart a little each night
   },
 
   // Player.
@@ -52,7 +52,7 @@ export const CONFIG = {
   DASH_COOLDOWN: 1.7,
   DASH_IFRAMES: 0.35,
   CONTACT_IFRAMES: 0.8,
-  MAGNET_RADIUS: 90,
+  MAGNET_RADIUS: 110, // 4.0: embers fly home faster, less time away from the Heart
 
   // Scoring.
   COMBO_WINDOW: 3.0, // seconds between kills before the combo decays
@@ -178,7 +178,7 @@ export const CONFIG = {
       hp: 16,
       speed: 96,
       radius: 12,
-      damage: 8, // the bolt it fires at the Heart
+      damage: 6, // the bolt it fires at the Heart — 4.0: snipers graze, not gut
       score: 90,
       embers: 3,
       color: '#7df9ff',
@@ -194,6 +194,17 @@ export const CONFIG = {
       embers: 3,
       color: '#ff8c42',
       glow: '#ff5400',
+    },
+    bulwark: {
+      name: 'Bulwark',
+      hp: 150, // a walking wall: Overcharge and pierce exist for this
+      speed: 40,
+      radius: 26,
+      damage: 10,
+      score: 120,
+      embers: 5,
+      color: '#94a3b8',
+      glow: '#e2e8f0',
     },
   },
 
@@ -224,7 +235,7 @@ export const NIGHTS = [
   { name: 'The Splitting', twist: 'Splitters burst into Minis. Longshots snipe the Heart from afar.', dark: false },
   { name: 'Kindlers Wake', twist: 'Kindlers run for the Heart. Guard it.', dark: false },
   { name: 'The Tyrant Wakes', twist: 'The Ember Tyrant comes for the Heart. Crashers charge it.', dark: false },
-  { name: 'Night of Shades', twist: 'Darkness falls. Shades hide beyond the light.', dark: true },
+  { name: 'Night of Shades', twist: 'Darkness falls. Shades hide beyond the light. Bulwarks march — forge Overcharge to break them.', dark: true },
   { name: 'The Warden', twist: 'A Warden shields its swarm. Break the shield.', dark: false },
   { name: 'Ember Rain', twist: 'Kindlers pour in from every edge. Crashers with them.', dark: false },
   { name: 'The Long Dark', twist: 'Darkness again — and everything is faster. Elites burn gold.', dark: true },
@@ -249,7 +260,8 @@ export function nightComposition(night) {
   add('dart', night >= 2 ? 2 + Math.floor(night / 2) : 0);
   add('splitter', night >= 3 ? 1 + Math.floor(night / 2) : 0);
   add('spitter', night >= 4 ? Math.floor(night / 2) : 0);
-  add('kindler', night >= 4 ? 1 + Math.floor(night * 0.8) : 0);
+  add('kindler', night >= 4 ? 1 + Math.floor(night * 0.6) : 0);
+  add('bulwark', night >= 6 ? 1 + Math.floor((night - 6) / 2) : 0); // 4.0: the walking wall arrives late
   add('sniper', night >= 3 ? 1 + Math.floor(night / 3) : 0);
   add('rammer', night >= 5 ? 1 + Math.floor((night - 3) / 2) : 0);
   add('shade', night >= 6 ? 3 + Math.floor(night * 0.75) : 0);

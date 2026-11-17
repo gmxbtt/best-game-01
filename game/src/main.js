@@ -26,6 +26,7 @@ import { drawGame } from './render.js';
 import { createUI } from './ui.js';
 import { createJuice, updateJuice, simTimeScale, killBurst, damageNumber } from './juice.js';
 import { collectEmber, updateFeeding } from './embers.js';
+import { tryForge } from './forge.js';
 import { applyShot } from './shots.js';
 import {
   createHeart,
@@ -80,6 +81,9 @@ function createGame(canvas, ctx) {
     carried: 0, // embers aboard the ship, waiting to be fed to the Heart
     fed: 0, // embers fed to the Heart this run
     feedAcc: 0, // fractional embers poured into the Heart
+    forgedTonight: false, // the Forge has been used this night (4.0)
+    overcharged: false, // the Forge's Overcharge is live right now (4.0)
+    forges: 0, // forges this run (a stat for the dawn report)
     kills: 0,
     juice: createJuice(),
     best: readBest(),
@@ -149,6 +153,9 @@ function startRun(game) {
   game.carried = 0;
   game.fed = 0;
   game.feedAcc = 0;
+  game.forgedTonight = false;
+  game.overcharged = false;
+  game.forges = 0;
   game.kills = 0;
   game.juice = createJuice();
   game.boss = null;
@@ -395,7 +402,7 @@ function stepGame(game, dt) {
     } else {
       game.state = 'upgrade';
       game.pendingUpgrades = rollUpgrades(game.rng, game.takenCounts);
-      game.ui.showUpgrade(game.pendingUpgrades, (choice) => pickUpgrade(game, choice));
+      game.ui.showUpgrade(game, game.pendingUpgrades, (choice) => pickUpgrade(game, choice));
     }
   }
 }
@@ -538,6 +545,8 @@ function main() {
         game.state = 'paused';
         game.ui.showPause();
       }
+      // The Forge: melt six carried embers into Overcharge, once a night.
+      if (input.wasPressed('KeyF')) tryForge(game);
     } else if (game.state === 'upgrade') {
       const keys = ['Digit1', 'Digit2', 'Digit3'];
       keys.forEach((code, i) => {

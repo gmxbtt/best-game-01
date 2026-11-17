@@ -181,6 +181,54 @@ html, body {
   transition: width 0.12s ease-out;
 }
 
+/* ---- The Forge (4.0): prompt and badge, gold on dark ---- */
+
+#forge-prompt {
+  position: absolute;
+  bottom: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  color: #ffd700;
+  text-shadow: 0 0 16px rgba(255, 215, 0, 0.9), 0 0 40px rgba(255, 159, 28, 0.5);
+  animation: forge-pulse 0.9s ease-in-out infinite alternate;
+  pointer-events: none;
+  white-space: nowrap;
+}
+@keyframes forge-pulse {
+  from { opacity: 0.65; }
+  to { opacity: 1; }
+}
+#overcharge-badge {
+  position: absolute;
+  bottom: 74px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 17px;
+  font-weight: 900;
+  letter-spacing: 3px;
+  color: #fff3c4;
+  background: rgba(255, 180, 0, 0.22);
+  border: 1px solid #ffd700;
+  border-radius: 6px;
+  padding: 4px 14px;
+  text-shadow: 0 0 12px rgba(255, 215, 0, 0.8);
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ---- Dawn report: what the night cost, on the upgrade screen ---- */
+
+.dawn-report {
+  margin: 6px 0 14px;
+  font-size: 16px;
+  letter-spacing: 1px;
+  color: #ffcf5c;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.9);
+}
+
 /* ---- Overlays ---- */
 
 .overlay {

@@ -294,6 +294,19 @@ function drawPlayer(game, ctx) {
   ctx.fill();
   ctx.restore();
 
+  // Overcharge (4.0): the ship burns gold while the Forge's metal holds.
+  if (game.overcharged) {
+    ctx.save();
+    ctx.shadowColor = '#ffd700';
+    ctx.shadowBlur = 26;
+    ctx.strokeStyle = 'rgba(255, 215, 0, 0.85)';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.r + 12 + Math.sin(game.time * 6) * 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // Dash cooldown ring.
   if (p.dashCooldown > 0) {
     const frac = 1 - p.dashCooldown / (CONFIG.DASH_COOLDOWN * p.mods.dashCooldownMul);
@@ -416,6 +429,31 @@ function drawEnemies(game, ctx) {
         ctx.arc(e.r * 0.32, -e.r * 0.15, e.r * 0.14, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
+        break;
+      }
+      case 'bulwark': {
+        // A walking wall: a riveted steel slab, slowly turning — the one
+        // enemy that asks for Overcharge instead of patience.
+        ctx.rotate(game.time * 0.25);
+        ctx.beginPath();
+        ctx.moveTo(0, -e.r);
+        ctx.lineTo(e.r * 0.85, -e.r * 0.5);
+        ctx.lineTo(e.r * 0.85, e.r * 0.5);
+        ctx.lineTo(0, e.r);
+        ctx.lineTo(-e.r * 0.85, e.r * 0.5);
+        ctx.lineTo(-e.r * 0.85, -e.r * 0.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.rotate(-game.time * 0.25);
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.45, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = e.glow;
+        ctx.beginPath();
+        ctx.arc(0, 0, e.r * 0.16, 0, Math.PI * 2);
+        ctx.fill();
         break;
       }
       case 'warden': {

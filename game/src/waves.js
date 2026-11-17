@@ -5,11 +5,15 @@
 
 import { CONFIG, NIGHTS, nightComposition } from './config.js';
 import { createEnemy } from './entities.js';
+import { resetForgeForNight } from './forge.js';
 
 export function startWave(game, wave) {
   game.wave = wave;
   game.waveActive = true;
   game.waveCleared = false;
+  // Dawn cools the metal: the Forge is ready again, and last night's
+  // Overcharge is spent.
+  resetForgeForNight(game);
   game.spawnQueue = [];
   const night = NIGHTS[wave - 1] ?? NIGHTS[0];
   game.nightName = night.name;

@@ -38,6 +38,8 @@
       <div id="boss-name">☠ EMBER TYRANT</div>
       <div id="boss-track"><div id="boss-fill"></div></div>
     </div>
+    <div id="forge-prompt" class="hidden"></div>
+    <div id="overcharge-badge" class="hidden">⚡ OVERCHARGED</div>
   </div>
 
   <!-- Night banner: each night opens with its name -->
@@ -56,6 +58,7 @@
       <p><b>Shift</b> — dash (brief invulnerability) &nbsp;·&nbsp; <b>P / Esc</b> — pause &nbsp;·&nbsp; <b>M</b> — mute</p>
       <p>Slain enemies drop <b>embers</b>. Scoop them up, then fly back to the <b>Ember Heart</b> — standing close pours them in, healing the Heart and feeding its flame. A Heart with no flame burns out and dies.</p>
       <p>Kindlers, Crashers and Longshots hunt the Heart — <b>if it falls, the night wins</b>, even if your ship still flies. Build your combo, pick an upgrade after every night. On dark nights only the Heart's light can be trusted.</p>
+      <p>Near the Heart with <b>6+ embers</b>, press <b>F</b> to <b>FORGE</b> them into Overcharge — +50% damage till dawn — instead of feeding the flame. Feed or forge: the choice is the run.</p>
       <p>Survive all 10 nights — the Ember Tyrant waits at nights 5 and 10.</p>
     </div>
     <button id="btn-start" class="big-btn" type="button">▶ &nbsp;START — click or press Enter</button>
@@ -66,6 +69,7 @@
   <div id="upgrade-screen" class="overlay hidden">
     <h2 class="screen-title">NIGHT CLEARED — CHOOSE AN UPGRADE</h2>
     <p class="screen-sub">Pick one. Press 1, 2 or 3, or click a card. ♥ marks an upgrade for the Heart.</p>
+    <p id="dawn-report" class="dawn-report"></p>
     <div id="upgrade-cards"></div>
   </div>
 
